@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASHA Copilot — Intelligent Assistive Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside>
+        <div class="brand-section">
+            <div class="brand-logo">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                </svg>
+            </div>
+            <span class="brand-title">ASHA Copilot</span>
+        </div>
+
+        <nav>
+            <ul class="nav-links">
+                <li>
+                    <div class="nav-item active" data-view="companion">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="12" rx="2" ry="2"></rect>
+                            <line x1="12" y1="16" x2="12" y2="20"></line>
+                            <line x1="8" y1="20" x2="16" y2="20"></line>
+                        </svg>
+                        ASHA Companion
+                    </div>
+                </li>
+                <li>
+                    <div class="nav-item" data-view="supervisor">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        Supervisor Stats
+                    </div>
+                </li>
+                <li>
+                    <div class="nav-item" data-view="beneficiary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Beneficiary Register
+                    </div>
+                </li>
+                <li>
+                    <div class="nav-item" data-view="rag">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Guidelines RAG
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sync-status-card">
+                <div class="sync-indicator">
+                    <span class="dot"></span>
+                    <span class="sync-text">System Online</span>
+                </div>
+                <div class="switch-container" style="margin-top: 0.5rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">Offline Simulation</span>
+                    <label class="switch">
+                        <input type="checkbox" id="offline-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button id="sync-btn" class="btn btn-primary" style="margin-top: 0.75rem; font-size: 0.8rem; padding: 0.5rem; justify-content: center; display: none;">
+                    Sync Pending
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main View Workspace -->
+    <main>
+        
+        <!-- View 1: ASHA Companion Portal -->
+        <section id="companion-view" class="view-panel active">
+            <div class="view-header">
+                <div class="header-title-wrapper">
+                    <h1>ASHA Companion Portal</h1>
+                    <p>Log prenatal and childhood checkups using multilingual voice recording.</p>
+                </div>
+            </div>
+
+            <div class="recorder-sandbox">
+                <!-- Left: Recording Interface -->
+                <div class="card-panel recording-controls-card">
+                    <div class="recording-timer" id="record-timer">00:00</div>
+                    <div class="record-btn-wrapper">
+                        <div class="wave-ring"></div>
+                        <div class="wave-ring"></div>
+                        <button class="btn-record" id="record-btn">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="recording-status-text" id="record-status">Click microphone to record visit</div>
+                    
+                    <!-- Presets for fast demonstration -->
+                    <div class="preset-section">
+                        <h4 class="preset-title">Quick Multilingual Presets (Demo Mode)</h4>
+                        <div class="preset-buttons">
+                            <button class="preset-btn" data-text="Lakshmi Devi, age 23, in Kothapalli. She is in month 7 of pregnancy. BP is elevated, systolic 145 over 95. Weight is 58 kg. She complains of swelling in her feet and severe headache.">
+                                <strong>Hinglish (High Risk):</strong> "Lakshmi Devi, age 23, Kothapalli village. 7th month pregnant. BP measurement 145/95. Pair me swelling hai aur severe head ache..."
+                            </button>
+                            <button class="preset-btn" data-text="Anitha Rao from Cherukupalli, age 29, 8th month pregnancy checkup. Weight is 61.5. BP is 122 over 78. Reports minor back pain, but no headache, fits, or bleeding.">
+                                <strong>Teluglish (Normal Trimester check):</strong> "Anitha Rao, Cherukupalli village, age 29. 8th month pregnancy checkup. BP level 122 over 78. Mild back pain undi, headache Ledu..."
+                            </button>
+                            <button class="preset-btn" data-text="Sunitha V. from Ramapuram, age 21. Completed pregnancy, child checkup. Weight is 52 kg. BP is 115 over 70. Mother is healthy.">
+                                <strong>English (Child check / Postpartum):</strong> "Sunitha V, Ramapuram, 21 years old. Visit conducted. Weight 52kg, BP normal 115 over 70. Health parameters are stable."
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: AI Extraction Output & Database Action -->
+                <div class="card-panel extracted-details-card">
+                    <h3 style="margin-bottom: 1rem;">Structured Visit Records (NLP Extraction)</h3>
+                    
+                    <div class="form-group" style="margin-bottom: 0.75rem;">
+                        <label>Speech Transcript</label>
+                        <div class="raw-transcript-box" id="raw-transcript">
+                            "No speech recorded yet. Use the record button or select a preset scenario."
+                        </div>
+                    </div>
+
+                    <div class="extraction-grid">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="ext-name" placeholder="Extracting name...">
+                        </div>
+                        <div class="form-group">
+                            <label>Age</label>
+                            <input type="number" id="ext-age" placeholder="Age...">
+                        </div>
+                        <div class="form-group">
+                            <label>Pregnancy Month</label>
+                            <input type="number" id="ext-month" placeholder="Trimester (1-9)...">
+                        </div>
+                        <div class="form-group">
+                            <label>Blood Pressure (BP)</label>
+                            <input type="text" id="ext-bp" placeholder="Systolic/Diastolic...">
+                        </div>
+                        <div class="form-group">
+                            <label>Weight (kg)</label>
+                            <input type="text" id="ext-weight" placeholder="Weight...">
+                        </div>
+                        <div class="form-group">
+                            <label>Risk Assessment</label>
+                            <span class="extracted-value risk-badge low" id="ext-risk">low</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reported Symptoms</label>
+                        <div class="scheme-tag-list" id="ext-symptoms" style="margin-top: 0.25rem;">
+                            <span class="schemes-empty">None reported</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Matching Government Schemes</label>
+                        <div class="scheme-tag-list" id="ext-schemes">
+                            <div class="schemes-empty">No matching benefits found</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="flex-grow: 1;">
+                        <label>Visit Summary Notes</label>
+                        <textarea id="ext-notes" rows="3" placeholder="Visit summary summary..."></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" id="save-visit-btn" style="width: 100%; margin-top: 1rem;" disabled>
+                        Save Visit Log to Database
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- View 2: Supervisor Stats Dashboard -->
+        <section id="supervisor-view" class="view-panel">
+            <div class="view-header">
+                <div class="header-title-wrapper">
+                    <h1>Supervisor Dashboard</h1>
+                    <p>Track clinical risk cases, immunization rates, and ASHA activity performance metrics.</p>
+                </div>
+            </div>
+
+            <!-- KPI Cards Grid -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Total Registered</div>
+                    <div class="kpi-value" id="kpi-total">5</div>
+                    <div class="kpi-subtext">Pregnant/Postpartum mothers</div>
+                </div>
+                <div class="kpi-card risk">
+                    <div class="kpi-title">High-Risk Cases</div>
+                    <div class="kpi-value" id="kpi-risk">2</div>
+                    <div class="kpi-subtext">Immediate medical focus</div>
+                </div>
+                <div class="kpi-card alerts">
+                    <div class="kpi-title">Active Alerts</div>
+                    <div class="kpi-value" id="kpi-alerts">3</div>
+                    <div class="kpi-subtext">Awaiting resolution</div>
+                </div>
+                <div class="kpi-card completed">
+                    <div class="kpi-title">Visits Tracked</div>
+                    <div class="kpi-value" id="kpi-visits">3</div>
+                    <div class="kpi-subtext">This month's logs</div>
+                </div>
+            </div>
+
+            <!-- Chart Row -->
+            <div class="dashboard-row">
+                <!-- Chart 1: Enrollment Regional Trend -->
+                <div class="card-panel">
+                    <div class="card-title-wrapper">
+                        <h3>Regional Registration Stats</h3>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Village Breakdown</span>
+                    </div>
+                    <div class="chart-container" id="trend-chart-box">
+                        <!-- Custom SVG renders here -->
+                    </div>
+                </div>
+
+                <!-- Chart 2: Risk Profile Ratio -->
+                <div class="card-panel">
+                    <div class="card-title-wrapper">
+                        <h3>Maternal Risk Profile</h3>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Risk Distribution</span>
+                    </div>
+                    <div class="chart-container" id="risk-chart-box" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <!-- Custom SVG renders here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Urgent Alerts Section -->
+            <div class="card-panel">
+                <h3 style="margin-bottom: 1.5rem;">Active Critical Alerts</h3>
+                <div class="alert-list" id="alerts-container">
+                    <!-- Alerts list populate here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- View 3: Beneficiary Register -->
+        <section id="beneficiary-view" class="view-panel">
+            <div class="view-header">
+                <div class="header-title-wrapper">
+                    <h1>Maternal Registry</h1>
+                    <p>Complete directory of local pregnant mothers and postpartum cases.</p>
+                </div>
+                <button class="btn btn-primary" id="add-beneficiary-btn">
+                    + Register New Mother
+                </button>
+            </div>
+
+            <div class="data-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Age</th>
+                            <th>Phone</th>
+                            <th>Village</th>
+                            <th>Pregnancy Status</th>
+                            <th>Risk Class</th>
+                            <th>Registered Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="beneficiary-table-body">
+                        <!-- Table populates dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- View 4: Guidelines RAG Chatbot -->
+        <section id="rag-view" class="view-panel">
+            <div class="view-header">
+                <div class="header-title-wrapper">
+                    <h1>ASHA Guidance Companion</h1>
+                    <p>Ask questions related to vaccination reactions, nutrition, and maternal warning indicators.</p>
+                </div>
+            </div>
+
+            <div class="assistant-panel">
+                <!-- Left: Guide Preload Topics -->
+                <div class="card-panel guide-topics-card">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Handbook Index</h3>
+                    <div class="topic-list-item active" data-query="What is the guidelines for fever after vaccine?">
+                        Fever after Vaccine
+                    </div>
+                    <div class="topic-list-item" data-query="How to prevent anemia in pregnant women?">
+                        Anemia IFA intake
+                    </div>
+                    <div class="topic-list-item" data-query="What are the danger signs during pregnancy for immediate referral?">
+                        Obstetric Danger Signs
+                    </div>
+                    <div class="topic-list-item" data-query="Why do we delay baby bathing for hypothermia?">
+                        Newborn Warmth Care
+                    </div>
+                    <div class="topic-list-item" data-query="What is exclusive breastfeeding and colostrum importance?">
+                        Breastfeeding Rules
+                    </div>
+                    <div class="topic-list-item" data-query="How to detect child malnutrition using MUAC and WHO chart?">
+                        Child Malnutrition (SAM)
+                    </div>
+                </div>
+
+                <!-- Right: Active Chat Sandbox -->
+                <div class="card-panel chat-card">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-bubble bot">
+                            Namaste! I am your ASHA Guideline Assistant. Click any topic in the index, or type your question below. I will search the official guidelines and answer safely.
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chat-input" placeholder="Type a guideline query (e.g. fever after Pentavalent vaccine)...">
+                        <button class="btn btn-primary" id="send-chat-btn">Send</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Popup: Register Beneficiary -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Register New Beneficiary</h2>
+                <button class="modal-close-btn" id="close-modal-btn">&times;</button>
+            </div>
+            
+            <form id="beneficiary-form" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" required placeholder="e.g. Lakshmi Devi">
+                </div>
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" required min="14" max="55" placeholder="e.g. 24">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="text" id="phone" placeholder="e.g. 9876543210">
+                </div>
+                <div class="form-group">
+                    <label for="village">Village / Ward</label>
+                    <select id="village" required>
+                        <option value="Kothapalli">Kothapalli</option>
+                        <option value="Cherukupalli">Cherukupalli</option>
+                        <option value="Ramapuram">Ramapuram</option>
+                        <option value="Gopalapuram">Gopalapuram</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pregnancy_status">Pregnancy Status</label>
+                    <select id="pregnancy_status" required onchange="document.getElementById('month-group').style.display = this.value === 'true' ? 'flex' : 'none';">
+                        <option value="true">Pregnant</option>
+                        <option value="false">Postpartum (Child Check)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="month-group">
+                    <label for="pregnancy_month">Pregnancy Month (1 - 9)</label>
+                    <input type="number" id="pregnancy_month" min="1" max="9" value="1">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="cancel-modal-btn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-beneficiary-btn">Save Beneficiary</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script loading -->
+    <script src="js/app.js"></script>
+</body>
+</html>

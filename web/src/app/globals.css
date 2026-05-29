@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
+  
+  /* Cyber Colors */
+  --cyber-bg: #0F172A;
+  --cyber-bg-sec: #111827;
+  --cyber-card: #1E293B;
+  --cyan-glow: rgba(0, 194, 255, 0.45);
+  --purple-glow: rgba(124, 58, 237, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background-color: #0F172A;
+  background-image: 
+    radial-gradient(at 10% 20%, hsla(242, 60%, 15%, 0.5) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, hsla(190, 70%, 12%, 0.6) 0px, transparent 50%),
+    radial-gradient(at 50% 80%, hsla(270, 70%, 15%, 0.4) 0px, transparent 50%);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Panels */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-heavy {
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Glowing Neon Borders & Underlines */
+.glow-cyan {
+  box-shadow: 0 0 20px var(--cyan-glow);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px var(--purple-glow);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.glow-border-cyan {
+  border-color: rgba(0, 194, 255, 0.6);
+  box-shadow: 0 0 10px rgba(0, 194, 255, 0.2);
+}
+
+.glow-border-purple {
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.2);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 194, 255, 0.6);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+    box-shadow: 0 0 25px rgba(0, 194, 255, 0.5), inset 0 0 15px rgba(0, 194, 255, 0.3);
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+    box-shadow: 0 0 45px rgba(0, 194, 255, 0.85), inset 0 0 25px rgba(0, 194, 255, 0.5);
+  }
+}
+
+.pulse-orb {
+  animation: pulseGlow 4s infinite ease-in-out;
+}
+
+@keyframes laserScan {
+  0% {
+    top: 0%;
+  }
+  50% {
+    top: 100%;
+  }
+  100% {
+    top: 0%;
+  }
+}
+
+.laser-scanner {
+  animation: laserScan 2.5s infinite linear;
+}
+
+@keyframes waveGrow {
+  0%, 100% {
+    height: 6px;
+  }
+  50% {
+    height: 38px;
+  }
+}
+
+.voice-wave-bar {
+  animation: waveGrow 1.2s infinite ease-in-out;
+}
+
+/* Floating Particles */
+@keyframes floatUp {
+  0% {
+    transform: translateY(100px) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-800px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.particle {
+  position: absolute;
+  bottom: -20px;
+  background: radial-gradient(circle, rgba(0, 194, 255, 0.2) 0%, transparent 80%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: floatUp 15s infinite linear;
+}
+
+/* Accessibility Focus State */
+.accessible-focus:focus-visible {
+  outline: 3px solid #00C2FF;
+  outline-offset: 4px;
+}
+
+/* Custom Grid Columns for Categories */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .category-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Smooth Tabs */
+.tab-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

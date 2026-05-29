@@ -1,0 +1,493 @@
+================================================================================
+                        ASHA COPILOT AI — PPT CONTENT
+          AI-Powered Multilingual Healthcare Assistant for ASHA Workers
+================================================================================
+
+
+================================================================================
+SLIDE 1 — TITLE SLIDE
+================================================================================
+
+Project Name  :  ASHA Copilot AI
+Tagline       :  AI-Powered Rural Healthcare Assistant for ASHA Workers
+Team Name     :  [Your Team Name]
+Team Members  :  [Member 1], [Member 2], [Member 3], [Member 4]
+College Name  :  [Your College Name]
+Hackathon     :  [Hackathon Name & Year]
+
+Subtitle:
+"Empowering 1 million+ ASHA workers with AI-driven voice-based
+clinical recording, intelligent risk detection, and offline-first
+multilingual healthcare guidance."
+
+
+================================================================================
+SLIDE 2 — PROBLEM STATEMENT
+================================================================================
+
+Title: The Healthcare Gap in Rural India
+
+Key Problems:
+
+• ASHA workers handle 25+ households each, with massive manual paperwork
+  — paper registers cause critical data loss and delays.
+
+• India has ~10 lakh (1 million) ASHA workers. Most have limited digital
+  literacy and struggle with complex mobile apps.
+
+• Language barriers: Workers speak Hindi, Telugu, Tamil, or local dialects.
+  Existing apps are English-only.
+
+• High-risk pregnancies are frequently MISSED because manual tracking
+  cannot flag danger signs in real time.
+
+• 65% of rural India faces intermittent or no internet connectivity,
+  making cloud-only solutions unusable.
+
+• Delayed healthcare response: Paper-based reporting takes days/weeks
+  to reach supervisors — too late for critical interventions.
+
+Statistics:
+  → India's Maternal Mortality Ratio: 97 per 100,000 live births (SRS 2020)
+  → 44,000+ maternal deaths annually in India
+  → ~35% of pregnant women in rural India receive fewer than 4 ANC visits
+  → Only 58% of deliveries happen in health facilities in remote areas
+  → ASHA workers serve as the ONLY healthcare touchpoint for 80%+ rural families
+
+
+================================================================================
+SLIDE 3 — EXISTING SYSTEM & LIMITATIONS
+================================================================================
+
+Title: What Exists Today — and Why It Falls Short
+
+┌──────────────────────────┬──────────────────────────────────────────────┐
+│ Current System           │ Problem                                      │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ Paper registers &        │ Prone to data loss, no searchability,        │
+│ handwritten records      │ impossible to aggregate for analytics        │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ Manual reporting to PHC  │ Takes 2-4 weeks to reach supervisors;        │
+│ (Primary Health Centre)  │ too late for high-risk interventions          │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ No smart clinical alerts │ Danger signs like high BP (pre-eclampsia),   │
+│                          │ bleeding, or convulsions go unreported        │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ No AI or NLP tools       │ Workers must manually interpret symptoms;     │
+│                          │ no automated medical guidance available       │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ English-only government  │ ASHA workers speak Hindi, Telugu, or local    │
+│ health apps              │ dialects — digital literacy is a barrier      │
+├──────────────────────────┼──────────────────────────────────────────────┤
+│ Cloud-dependent systems  │ Rural areas lack stable internet; apps fail   │
+│                          │ offline — data is lost or never synced        │
+└──────────────────────────┴──────────────────────────────────────────────┘
+
+Bottom Line: There is NO intelligent, multilingual, offline-capable tool
+designed specifically for ASHA workers on the ground.
+
+
+================================================================================
+SLIDE 4 — PROPOSED SOLUTION
+================================================================================
+
+Title: Introducing ASHA Copilot AI
+
+"ASHA Copilot is an AI-powered, multilingual healthcare assistant
+that enables ASHA workers to record patient visits through voice,
+automatically extract clinical data using NLP, detect high-risk
+cases in real time, access medical guidelines instantly, and
+operate seamlessly in offline rural environments."
+
+Core Solution Pillars:
+
+  1. VOICE-BASED DATA ENTRY
+     → ASHA workers speak naturally in Hindi, Telugu, or English.
+     → AI transcribes and extracts structured medical data automatically.
+     → No typing, no forms — just talk.
+
+  2. AI-POWERED RISK DETECTION
+     → Clinical rules engine evaluates blood pressure, symptoms, age factors.
+     → Automatically flags high-risk pregnancies (pre-eclampsia, eclampsia).
+     → Instant alerts sent to supervisors.
+
+  3. INTELLIGENT GUIDELINE ASSISTANT (RAG)
+     → Retrieval-Augmented Generation chatbot for medical queries.
+     → Trained on official MoHFW, WHO, UNICEF maternal/child guidelines.
+     → ASHA workers get instant answers: "What to do if baby has fever after vaccine?"
+
+  4. OFFLINE-FIRST ARCHITECTURE
+     → Records visits locally when offline.
+     → Automatically syncs when connectivity is restored.
+     → Zero data loss, even in zero-network villages.
+
+  5. SUPERVISOR DASHBOARD
+     → Real-time KPIs: total registrations, high-risk cases, active alerts.
+     → Village-wise analytics and risk distribution charts.
+     → Critical alert management with resolve workflow.
+
+  6. GOVERNMENT SCHEME MATCHING
+     → Automatically matches beneficiaries to eligible schemes:
+        PMMVY, JSY, PMSMA, Anganwadi Nutrition, ICDS Immunization.
+
+
+================================================================================
+SLIDE 5 — KEY FEATURES
+================================================================================
+
+Title: Feature Highlights
+
+✅ Voice-to-Text Visit Recording
+   Multilingual speech recognition (Hindi, Telugu, English) converts
+   spoken narratives into structured medical records.
+
+✅ AI Clinical Data Extraction (NLP)
+   LLM-powered entity extraction: name, age, BP, pregnancy month,
+   symptoms, weight — all parsed from natural speech.
+
+✅ High-Risk Pregnancy Detection
+   Rules engine checks: hypertension (BP ≥ 140/90), danger symptoms
+   (bleeding, convulsions, blurred vision), age factors (teen/advanced).
+
+✅ Beneficiary Tracking & Registry
+   Complete maternal registry with risk classification, village mapping,
+   pregnancy timeline tracking, and visit history.
+
+✅ Offline-First Sync Engine
+   Local SQLite storage → automatic batch sync to server when online.
+   Offline simulation toggle built into the UI for demo.
+
+✅ Multilingual Support
+   Supports Hinglish, Teluglish, and English transcripts.
+   Regex-based fallback NLP works without internet.
+
+✅ RAG-Powered Guideline Assistant
+   AI chatbot grounded in official healthcare guidelines.
+   Topics: vaccination reactions, anemia prevention, danger signs,
+   breastfeeding, newborn warmth care, child malnutrition (SAM/MAM).
+
+✅ Supervisor Dashboard
+   KPI cards, regional registration charts, risk profile distribution,
+   active critical alerts with one-click resolution.
+
+✅ Government Scheme Recommendations
+   Auto-matches: PM Matru Vandana Yojana, Janani Suraksha Yojana,
+   PMSMA, Anganwadi Nutrition, ICDS Immunization.
+
+✅ Smart Alerts & Reminders
+   Automated high-risk alerts pushed to supervisor dashboard.
+   Tracks unresolved alerts until clinical action is taken.
+
+
+================================================================================
+SLIDE 6 — SYSTEM ARCHITECTURE
+================================================================================
+
+Title: System Architecture — End-to-End Flow
+
+[Refer to the diagrams in PPT_Diagrams.md for visual flowcharts]
+
+Architecture Flow:
+
+  ASHA Worker (Mobile/Web)
+        │
+        ▼
+  🎙️ Speech Recognition Layer
+  (Gemini 2.5 Flash / OpenAI Whisper)
+        │
+        ▼
+  🧠 NLP Clinical Extraction Engine
+  (Gemini / GPT-4o-mini / Regex Fallback)
+        │  Extracts: Name, Age, BP, Symptoms, Weight, Pregnancy Month
+        ▼
+  ⚙️ Clinical Rules Engine
+  (Pre-eclampsia detection, Danger sign matching, Scheme eligibility)
+        │
+        ▼
+  🖥️ FastAPI Backend Server
+  (REST APIs: /api/voice-visit, /api/visits, /api/alerts, /api/rag-chat)
+        │
+        ├──▶ SQLite Database (beneficiaries, visits, alerts, schemes, users)
+        │
+        ├──▶ RAG Pipeline (Keyword ranking + LLM generation from guidelines corpus)
+        │
+        └──▶ Supervisor Dashboard (Next.js / HTML-CSS-JS)
+             KPI Cards │ Charts │ Alert Management
+
+  Offline Mode:
+  ┌──────────────────────────────────────────────────┐
+  │  Local SQLite Cache → Queue → Batch Sync API     │
+  │  /api/sync endpoint handles bulk offline uploads  │
+  └──────────────────────────────────────────────────┘
+
+
+================================================================================
+SLIDE 7 — TECHNICAL STACK
+================================================================================
+
+Title: Technology Stack
+
+┌─────────────────────┬──────────────────────────────────────────────────┐
+│ Layer               │ Technology                                       │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Frontend (ASHA UI)  │ HTML5, CSS3, Vanilla JavaScript                  │
+│                     │ Dark-themed responsive single-page application   │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Supervisor Dashboard│ Next.js (React + TypeScript)                     │
+│                     │ Server-side rendered analytics dashboard         │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Backend API         │ FastAPI (Python)                                  │
+│                     │ RESTful endpoints with Pydantic validation       │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Speech-to-Text      │ Google Gemini 2.5 Flash (primary)                │
+│                     │ OpenAI Whisper API (fallback)                    │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ NLP / LLM Engine    │ Gemini 2.5 Flash (structured JSON extraction)    │
+│                     │ GPT-4o-mini (fallback)                           │
+│                     │ Regex-based fallback (offline zero-config mode)  │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ RAG Pipeline        │ Keyword-ranked guideline retrieval + LLM gen     │
+│                     │ Embedded knowledge base: MoHFW, WHO, UNICEF     │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Clinical Rules      │ Python rules engine (custom)                     │
+│ Engine              │ BP thresholds, symptom matching, age factors     │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Database            │ SQLite (lightweight, embedded, offline-ready)     │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Offline Storage     │ SQLite local cache + batch sync API              │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Authentication      │ Username/password auth via FastAPI endpoints     │
+├─────────────────────┼──────────────────────────────────────────────────┤
+│ Deployment          │ Uvicorn ASGI server                               │
+│                     │ CORS-enabled for cross-origin access             │
+└─────────────────────┴──────────────────────────────────────────────────┘
+
+
+================================================================================
+SLIDE 8 — WORKFLOW / USER JOURNEY
+================================================================================
+
+Title: How an ASHA Worker Uses ASHA Copilot
+
+Step 1 → LOGIN
+  ASHA worker opens the app and logs in with their credentials.
+
+Step 2 → RECORD VISIT VIA VOICE
+  Worker clicks the microphone button on the ASHA Companion Portal.
+  Speaks naturally: "Lakshmi Devi, age 23, Kothapalli village.
+  7th month pregnant. BP 145/95. Pair me swelling hai aur headache..."
+
+Step 3 → AI EXTRACTS MEDICAL DATA
+  The NLP engine transcribes and parses the speech into structured fields:
+  Name: Lakshmi Devi | Age: 23 | Pregnancy Month: 7
+  BP: 145/95 | Symptoms: Swelling, Severe Headache | Weight: 58 kg
+
+Step 4 → RISK ENGINE EVALUATES
+  Clinical rules engine detects:
+  ⚠️ Severe Hypertension (BP 145/95 ≥ 140/90)
+  ⚠️ High-risk symptoms: Swelling + Severe Headache
+  → Risk Level: HIGH
+  → Recommendation: "URGENT — Refer immediately to nearest PHC/CHC"
+
+Step 5 → GOVERNMENT SCHEMES MATCHED
+  Auto-matched eligible schemes:
+  → PM Matru Vandana Yojana (PMMVY)
+  → Janani Suraksha Yojana (JSY)
+  → Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA)
+  → Anganwadi Nutrition Support
+
+Step 6 → VISIT SAVED & ALERTS TRIGGERED
+  Visit log saved to database.
+  HIGH-RISK ALERT automatically pushed to supervisor dashboard.
+
+Step 7 → SUPERVISOR REVIEWS
+  Supervisor sees the alert on their dashboard with full clinical context.
+  Can resolve the alert after arranging referral transport.
+
+Step 8 → GUIDANCE ON DEMAND
+  Worker opens the RAG assistant: "What are danger signs in pregnancy?"
+  Gets official guideline-grounded answer instantly.
+
+
+================================================================================
+SLIDE 9 — IMPACT & BENEFITS
+================================================================================
+
+Title: Real-World Impact
+
+🏥 FASTER HEALTHCARE REPORTING
+  Voice recording reduces visit documentation time from 15+ minutes
+  to under 2 minutes.
+
+📋 REDUCED PAPERWORK
+  Eliminates manual registers. All data is digitized, searchable,
+  and aggregated automatically.
+
+🚨 EARLY RISK DETECTION
+  AI-powered rules engine catches pre-eclampsia, bleeding,
+  convulsions, and other obstetric emergencies in real time.
+  → Potential to prevent maternal deaths through timely referrals.
+
+🌾 RURAL HEALTHCARE DIGITIZATION
+  Offline-first design ensures the app works in zero-network villages.
+  No data is ever lost — automatic sync when connectivity returns.
+
+👩‍👧 BETTER MATERNAL & CHILD CARE
+  Structured tracking of pregnancy timelines, ANC visits,
+  immunization schedules, and nutritional status.
+
+🗣️ BREAKING LANGUAGE BARRIERS
+  Multilingual NLP (Hindi, Telugu, English) ensures
+  every ASHA worker can use the system without English proficiency.
+
+💰 SCHEME AWARENESS
+  Auto-matching government benefits ensures no eligible mother
+  misses out on financial support (PMMVY, JSY, PMSMA).
+
+📊 DATA-DRIVEN SUPERVISION
+  Supervisor dashboard provides actionable KPIs, risk distribution,
+  and village-level analytics — replacing guesswork with data.
+
+Alignment:
+  ✅ Supports Digital India initiative
+  ✅ Aligns with Ayushman Bharat and National Health Mission goals
+  ✅ Advances public healthcare modernization in rural India
+
+
+================================================================================
+SLIDE 10 — FUTURE SCOPE
+================================================================================
+
+Title: Scalability & Future Roadmap
+
+🔮 PHASE 2 ENHANCEMENTS:
+
+  1. Wearable Integration
+     → Connect with low-cost BP monitors, pulse oximeters, and
+        glucometers via Bluetooth for automated vital capture.
+
+  2. Predictive Analytics with ML
+     → Train models on historical visit data to predict
+        high-risk pregnancies weeks before clinical manifestation.
+
+  3. Government API Integration
+     → Direct integration with Ayushman Bharat Digital Mission (ABDM),
+        Health ID, and DigiLocker for verified health records.
+
+  4. Telemedicine Module
+     → Enable video/audio consultations between ASHA workers
+        and PHC doctors directly within the app.
+
+  5. Regional Language Expansion
+     → Add Tamil, Kannada, Bengali, Marathi, Odia, Gujarati
+        speech recognition and NLP extraction support.
+
+  6. AI Chatbot in Regional Languages
+     → Voice-in, voice-out guideline assistant for workers
+        who cannot read text responses.
+
+  7. OCR for Handwritten Records
+     → Digitize existing paper registers using camera-based
+        OCR to bootstrap the digital database.
+
+  8. Flutter Mobile App
+     → Native Android/iOS app with offline SQLite, push
+        notifications, and camera-based document scanning.
+
+  9. Multi-ASHA Collaboration
+     → Enable multiple ASHA workers in a block to share
+        beneficiary data and coordinate referrals.
+
+  10. Immunization Tracker
+     → Complete child vaccination schedule tracking with
+        automated SMS/WhatsApp reminders to mothers.
+
+
+================================================================================
+SLIDE 11 — DEMO / SCREENSHOTS
+================================================================================
+
+Title: Live Demo & Application Screenshots
+
+[Insert screenshots of the following pages:]
+
+Screenshot 1: ASHA Companion Portal
+  → Voice recording interface with microphone animation
+  → Multilingual preset buttons (Hinglish, Teluglish, English)
+  → AI-extracted structured data fields (Name, Age, BP, Symptoms)
+  → Risk assessment badge and government scheme tags
+
+Screenshot 2: Supervisor Dashboard
+  → KPI cards: Total Registered, High-Risk Cases, Active Alerts, Visits
+  → Regional Registration Stats bar chart (village breakdown)
+  → Maternal Risk Profile distribution chart (low/medium/high)
+  → Active Critical Alerts list with resolve buttons
+
+Screenshot 3: Beneficiary Registry
+  → Maternal registry table with all registered beneficiaries
+  → Columns: Name, Age, Phone, Village, Pregnancy Status, Risk Class, Date
+  → "Register New Mother" button and modal form
+
+Screenshot 4: RAG Guideline Assistant
+  → Handbook index with clickable topics on the left panel
+  → Chat interface with bot responses grounded in official guidelines
+  → Sources cited: MoHFW, WHO, UNICEF, Anemia Mukt Bharat
+  → Topics covered: Fever after vaccine, Anemia/IFA, Danger signs,
+    Breastfeeding, Newborn warmth, Child malnutrition (SAM/MAM)
+
+Screenshot 5: Offline Simulation Mode
+  → Offline toggle switch in sidebar
+  → "System Offline" indicator
+  → Sync Pending button for batch upload
+
+
+================================================================================
+SLIDE 12 — CLOSING SLIDE
+================================================================================
+
+                        Thank You!
+                     Questions & Feedback?
+
+Project    :  ASHA Copilot AI
+Team       :  [Your Team Name]
+Contact    :  [Email / Phone]
+GitHub     :  [GitHub Repository URL]
+
+"Every ASHA worker deserves an AI copilot.
+ Every mother deserves timely care."
+
+
+================================================================================
+                    END OF PPT CONTENT
+================================================================================
+
+
+================================================================================
+                    PRESENTATION TIPS
+================================================================================
+
+DESIGN GUIDELINES:
+  • Theme: Dark modern UI (dark navy/charcoal background)
+  • Primary Colors: Teal (#00BFA6), Healthcare Blue (#4FC3F7), White
+  • Accent Colors: Coral Red for alerts (#FF5252), Amber for warnings
+  • Fonts: Poppins (headings), Montserrat (body text)
+  • Use Google Fonts or embed in PowerPoint
+
+SLIDE DESIGN RULES:
+  • Keep text to bullet points — NO paragraphs
+  • Maximum 6-7 bullet points per slide
+  • Use icons from Feather Icons, Lucide, or Flaticon
+  • Include a flowchart/diagram on the Architecture slide
+  • Use screenshot mockups with subtle drop shadows
+  • Add subtle gradient overlays on background
+
+ANIMATION SUGGESTIONS:
+  • Use "Appear" or "Fade" for bullet points
+  • Use "Morph" transition between slides (PowerPoint)
+  • Animate the architecture flow diagram step-by-step
+  • Keep animations subtle — avoid excessive effects
+
+COLOR CODING FOR RISK LEVELS:
+  • Low Risk: Green (#4CAF50)
+  • Medium Risk: Amber/Orange (#FF9800)
+  • High Risk: Red (#F44336)
