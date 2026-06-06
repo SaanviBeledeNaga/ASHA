@@ -24,8 +24,9 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Helper function to get text inside matching labels
+// Helper function to get text inside matching labels, checking ARIA and container tags for Google Forms compatibility
 function getAssociatedLabelText(element) {
+  // 1. Check standard <label> elements
   if (element.id) {
     const label = document.querySelector(`label[for="${element.id}"]`);
     if (label) return label.innerText;
@@ -33,9 +34,35 @@ function getAssociatedLabelText(element) {
   const parentLabel = element.closest("label");
   if (parentLabel) return parentLabel.innerText;
   
+  // 2. Check aria-label directly on input
+  const ariaLabel = element.getAttribute("aria-label");
+  if (ariaLabel) return ariaLabel;
+
+  const ariaLabelledBy = element.getAttribute("aria-labelledby");
+  if (ariaLabelledBy) {
+    const labelledByEl = document.getElementById(ariaLabelledBy);
+    if (labelledByEl) return labelledByEl.innerText;
+  }
+
+  // 3. Custom forms/Google Forms traversal: look at ancestor titles
+  let parent = element.parentElement;
+  for (let i = 0; i < 5 && parent; i++) {
+    const titleElements = parent.querySelectorAll('.M7eMe, [role="heading"], div, span');
+    for (const title of titleElements) {
+      if (title !== element && title.innerText && title.innerText.trim().length < 80) {
+        const text = title.innerText.trim();
+        if (text && !text.includes(element.value)) {
+          return text;
+        }
+      }
+    }
+    parent = parent.parentElement;
+  }
+
+  // 4. Sibling traversal fallback
   let prev = element.previousElementSibling;
   while (prev) {
-    if (prev.tagName === "LABEL") return prev.innerText;
+    if (prev.tagName === "LABEL" || prev.innerText) return prev.innerText;
     prev = prev.previousElementSibling;
   }
   return "";
@@ -43,18 +70,20 @@ function getAssociatedLabelText(element) {
 
 // Find input, select, or textarea by keywords in its attributes or label text
 function findField(keywords) {
-  const elements = document.querySelectorAll('input[type="text"], input:not([type]), select, textarea');
+  const elements = document.querySelectorAll('input[type="text"], input:not([type]), select, textarea, [role="textbox"]');
   for (const el of elements) {
     const id = (el.id || "").toLowerCase();
     const name = (el.name || "").toLowerCase();
     const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
+    const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
     const labelText = getAssociatedLabelText(el).toLowerCase();
     
-    for (const keyword of keywords) {
+    for (const keyword = keywords) {
       if (
         id.includes(keyword) || 
         name.includes(keyword) || 
         placeholder.includes(keyword) ||
+        ariaLabel.includes(keyword) ||
         labelText.includes(keyword)
       ) {
         return el;
@@ -129,36 +158,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Special handling for Gender field (which could be radio buttons or select dropdown)
     const genderField = findField(["gender", "sex", "gender_type"]);
-    if (genderField) {
-      if (genderField.tagName === "SELECT") {
-        const normVal = profile.gender.toUpperCase();
-        for (let i = 0; i < genderField.options.length; i++) {
-          const optVal = genderField.options[i].value.toUpperCase();
-          const optText = genderField.options[i].text.toUpperCase();
-          if (optVal.includes(normVal) || normVal.includes(optVal) || optText.includes(normVal) || normVal.includes(optText)) {
-            genderField.selectedIndex = i;
-            genderField.dispatchEvent(new Event("change", { bubbles: true }));
-            genderField.dispatchEvent(new Event("input", { bubbles: true }));
-            genderField.classList.add("autofill-highlight-pulse");
-            setTimeout(() => {
-              genderField.classList.remove("autofill-highlight-pulse");
-            }, 2000);
-            filledCount++;
-            break;
-          }
+    if (genderField && genderField.tagName === "SELECT") {
+      const normVal = profile.gender.toUpperCase();
+      for (let i = 0; i < genderField.options.length; i++) {
+        const optVal = genderField.options[i].value.toUpperCase();
+        const optText = genderField.options[i].text.toUpperCase();
+        if (optVal.includes(normVal) || normVal.includes(optVal) || optText.includes(normVal) || normVal.includes(optText)) {
+          genderField.selectedIndex = i;
+          genderField.dispatchEvent(new Event("change", { bubbles: true }));
+          genderField.dispatchEvent(new Event("input", { bubbles: true }));
+          genderField.classList.add("autofill-highlight-pulse");
+          setTimeout(() => {
+            genderField.classList.remove("autofill-highlight-pulse");
+          }, 2000);
+          filledCount++;
+          break;
         }
       }
     } else {
-      // Look for radio buttons matching gender text values
-      const radios = document.querySelectorAll('input[type="radio"]');
+      // Look for radio buttons matching gender text values (native or custom elements)
+      const radios = document.querySelectorAll('input[type="radio"], [role="radio"]');
       const normVal = profile.gender.toUpperCase();
       radios.forEach(radio => {
-        const val = (radio.value || "").toUpperCase();
-        const labelText = getAssociatedLabelText(radio).toUpperCase();
+        const val = (radio.value || radio.getAttribute("value") || radio.getAttribute("data-value") || "").toUpperCase();
+        const labelText = (radio.getAttribute("aria-label") || getAssociatedLabelText(radio) || "").toUpperCase();
         if (val.includes(normVal) || normVal.includes(val) || labelText.includes(normVal)) {
-          radio.checked = true;
-          radio.dispatchEvent(new Event("change", { bubbles: true }));
-          radio.dispatchEvent(new Event("input", { bubbles: true }));
+          if (radio.tagName === "INPUT") {
+            radio.checked = true;
+            radio.dispatchEvent(new Event("change", { bubbles: true }));
+            radio.dispatchEvent(new Event("input", { bubbles: true }));
+          } else {
+            // Click custom div elements directly (like Google Forms' role="radio" container)
+            radio.click();
+          }
+
+          // Visual feedback animation
+          radio.classList.add("autofill-highlight-pulse");
+          setTimeout(() => {
+            radio.classList.remove("autofill-highlight-pulse");
+          }, 2000);
+
           filledCount++;
         }
       });
