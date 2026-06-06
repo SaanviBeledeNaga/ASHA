@@ -87,18 +87,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           const result = await mapResponse.json();
           const mappings = result.mappings;
 
-          // Attach asha_id from scannedFields matching index structure
-          const enrichedMappings = mappings.map((m, idx) => ({
-            ...m,
-            asha_id: scannedFields[idx].asha_id
-          }));
-
           btnFill.innerHTML = "⚡ Auto-filling Form...";
 
           // Step 3: Populate values using content script
           chrome.tabs.sendMessage(activeTab.id, {
             action: "fillFields",
-            mappings: enrichedMappings,
+            mappings: mappings,
             profile: activeProfile
           }, (fillResponse) => {
             if (chrome.runtime.lastError || !fillResponse) {

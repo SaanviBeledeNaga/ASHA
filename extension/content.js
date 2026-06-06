@@ -159,11 +159,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       if (type === "radio" || el.type === "radio") {
         // Handle radio button selection
-        const val = (el.value || el.getAttribute("value") || el.getAttribute("data-value") || "").toUpperCase();
-        const labelText = (el.getAttribute("aria-label") || getAssociatedLabelText(el) || "").toUpperCase();
-        const normVal = value.toUpperCase();
+        const val = el.value || el.getAttribute("value") || el.getAttribute("data-value") || "";
+        const labelText = el.getAttribute("aria-label") || getAssociatedLabelText(el) || "";
+        const normVal = value.trim();
         
-        if (val.includes(normVal) || normVal.includes(val) || labelText.includes(normVal)) {
+        // Exact word boundary matching to prevent "MALE" matching "FEMALE"
+        const regex = new RegExp(`\\b${normVal}\\b`, 'i');
+        
+        if (regex.test(val) || regex.test(labelText)) {
+          console.log(`Matching gender radio option found for ${normVal}:`, el);
           if (el.tagName === "INPUT") {
             el.checked = true;
             el.dispatchEvent(new Event("change", { bubbles: true }));
@@ -194,8 +198,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         el.dispatchEvent(new Event("change", { bubbles: true }));
         filledCount++;
       } else {
-        // Handle general text inputs/textareas
-        el.value = value;
+        // Handle general text inputs, textareas, and contenteditable elements
+        if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+          el.value = value;
+        } else if (el.isContentEditable || el.getAttribute("contenteditable") === "true") {
+          el.innerText = value;
+          el.innerHTML = value;
+        } else {
+          // Fallback for divs with role="textbox"
+          el.value = value;
+          el.innerText = value;
+        }
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
         filledCount++;

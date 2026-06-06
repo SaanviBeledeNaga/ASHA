@@ -254,6 +254,7 @@ def update_autofill_profile(profile: AutofillProfileSchema):
     return {"status": "success", "profile": active_autofill_profile}
 
 class PageFieldSchema(BaseModel):
+    asha_id: str
     id: Optional[str] = None
     name: Optional[str] = None
     type: Optional[str] = None
@@ -285,12 +286,11 @@ def ai_map_fields(fields_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     - 'aadhaar': Aadhaar card number, UID, unique ID, identity card, or national ID.
     - 'address': Address, residence, home address, village, or location.
 
-    You must output a valid JSON array of objects, where each object corresponds to a field in the input list, in the exact same order.
+    You must output a valid JSON array of objects, where each object corresponds to a field in the input list.
     Each object must have the following fields:
-    1. 'id': The ID of the input field (or null if not provided).
-    2. 'name': The Name attribute of the input field (or null if not provided).
-    3. 'mapped_field': One of the values: 'name', 'dob', 'gender', 'aadhaar', 'address', or null if it does not fit any profile attribute.
-    4. 'confidence': A decimal value between 0.0 and 1.0 representing your confidence in the mapping.
+    1. 'asha_id': The exact unique tracking ID ('asha_id') passed in the input object.
+    2. 'mapped_field': One of the values: 'name', 'dob', 'gender', 'aadhaar', 'address', or null if it does not fit any profile attribute.
+    3. 'confidence': A decimal value between 0.0 and 1.0 representing your confidence in the mapping.
 
     Format the output STRICTLY as a JSON array. Do not include markdown code block syntax (like ```json ... ```), only the raw JSON string.
 
@@ -376,8 +376,7 @@ def ai_map_fields(fields_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         matched_field = field
                         
         mappings.append({
-            "id": f.get("id"),
-            "name": f.get("name"),
+            "asha_id": f.get("asha_id"),
             "mapped_field": matched_field,
             "confidence": highest_score if matched_field else 0.0
         })
