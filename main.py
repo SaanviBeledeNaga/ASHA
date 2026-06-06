@@ -15,6 +15,7 @@ from backend.database import (
 from backend.rules_engine import evaluate_clinical_risk, match_eligible_schemes
 from backend.voice_extractor import transcribe_audio, extract_structured_data
 from backend.rag_assistant import generate_rag_response
+from backend.ocr_extractor import extract_aadhaar_data, extract_register_data
 
 # Create app
 app = FastAPI(title="ASHA Copilot API", description="AI Companion Backend for ASHA workers")
@@ -207,14 +208,65 @@ async def process_voice_visit(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 5b. Document OCR Extractor Endpoint
+@app.post("/api/ocr")
+async def perform_ocr(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        extracted_data = extract_aadhaar_data(contents)
+        return extracted_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 5c. Register Digitization OCR Endpoint
+@app.post("/api/ocr-register")
+async def perform_register_ocr(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        extracted_data = extract_register_data(contents)
+        return extracted_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 5d. User Authentication Endpoints
+class UserAuthSchema(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/register")
+def register_user(data: UserAuthSchema):
+    try:
+        success = add_user(data.username, data.password)
+        if not success:
+            raise HTTPException(status_code=400, detail="Username already exists")
+        return {"status": "success", "message": "User registered successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/login")
+def login_user(data: UserAuthSchema):
+    try:
+        is_valid = authenticate_user(data.username, data.password)
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        return {"status": "success", "username": data.username}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 6. Guideline RAG Search Endpoints
 class RAGQuerySchema(BaseModel):
     query: str
+    category: Optional[str] = None
+    is_offline: Optional[bool] = False
 
 @app.post("/api/rag-chat")
 def query_guidelines(body: RAGQuerySchema):
     try:
-        response = generate_rag_response(body.query)
+        response = generate_rag_response(
+            query=body.query,
+            category=body.category,
+            is_offline=body.is_offline
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

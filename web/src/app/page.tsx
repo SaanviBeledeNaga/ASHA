@@ -10,6 +10,8 @@ interface Message {
   timestamp: string;
   isList?: boolean;
   listItems?: string[];
+  reroute?: boolean;
+  detectedCategory?: string;
 }
 
 interface Scheme {
@@ -19,6 +21,7 @@ interface Scheme {
   eligibility: string;
   icon: string;
   tags: string[];
+  categories?: string[];
 }
 
 export default function Home() {
@@ -27,7 +30,8 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<"chat" | "schemes" | "data" | "applications" | "notifications" | "history" | "settings" | "help">("chat");
   const [language, setLanguage] = useState<"hi" | "te" | "en">("hi");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("Health & Medical Services");
+  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("Health & Medical Services 🏥");
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   
   // Form State
@@ -43,6 +47,7 @@ export default function Home() {
   // Voice Simulation State
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [micPulse, setMicPulse] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
 
   // Scheme Search/Filter State
   const [schemeSearch, setSchemeSearch] = useState("");
@@ -61,6 +66,8 @@ export default function Home() {
 
   // Reference elements
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   // --- PERSISTENCE & INIT ---
   useEffect(() => {
@@ -72,13 +79,40 @@ export default function Home() {
     // Load session persistence
     const savedLogin = localStorage.getItem("asha_logged_in");
     const savedLang = localStorage.getItem("asha_lang");
+    const savedTheme = localStorage.getItem("asha_theme") as "dark" | "light" | null;
     if (savedLogin === "true") {
       setIsLoggedIn(true);
       setUserName(localStorage.getItem("asha_username") || "सुषमा देवी");
       if (savedLang) setLanguage(savedLang as any);
     }
-    return () => clearTimeout(timer);
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+    return () => {
+      clearTimeout(timer);
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+    };
   }, []);
+
+  // Apply theme class to <html> element whenever theme state changes
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    } else {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    }
+    localStorage.setItem("asha_theme", theme);
+  }, [theme]);
 
   // Set standard chat messages after language loads
   useEffect(() => {
@@ -87,7 +121,7 @@ export default function Home() {
         {
           id: "m1",
           sender: "bot",
-          text: "नमस्ते सुषमा देवी! 👋 मैं आपका जनमित्र AI सहायक हूँ। मैं आपकी कैसे मदद कर सकता हूँ?",
+          text: "नमस्ते सुषमा देवी! 👋 मैं आपका ASHA Copilot AI सहायक हूँ। मैं आपकी कैसे मदद कर सकता हूँ?",
           timestamp: "10:30 AM"
         },
         {
@@ -114,7 +148,7 @@ export default function Home() {
         {
           id: "m1",
           sender: "bot",
-          text: "నమస్తే సుష్మా దేవి! 👋 నేను మీ జన్మిత్ర AI సహాయకుడిని. నేను మీకు ఎలా సహాయం చేయగలను?",
+          text: "నమస్తే సుష్మా దేవి! 👋 నేను మీ ASHA Copilot AI సహాయకుడిని. నేను మీకు ఎలా సహాయం చేయగలను?",
           timestamp: "10:30 AM"
         },
         {
@@ -141,7 +175,7 @@ export default function Home() {
         {
           id: "m1",
           sender: "bot",
-          text: "Namaste Sushma Devi! 👋 I am your JanMitra AI Assistant. How can I assist you today?",
+          text: "Namaste Sushma Devi! 👋 I am your ASHA Copilot AI Assistant. How can I assist you today?",
           timestamp: "10:30 AM"
         },
         {
@@ -176,7 +210,7 @@ export default function Home() {
   // --- LOCALIZED TRANSLATIONS ENGINE ---
   const translations = {
     hi: {
-      appName: "जनमित्र AI",
+      appName: "ASHA Copilot",
       copilot: "COPILOT",
       subtitle: "आपका बहुभाषी सरकारी सहायता साथी",
       loading: "AI सेवाएँ शुरू हो रही हैं...",
@@ -218,10 +252,14 @@ export default function Home() {
       schemeDeadline: "आवेदन की अंतिम तिथि",
       referralHospital: "नज़दीकी ब्लॉक अस्पताल",
       pensionUpdate: "वृद्धावस्था पेंशन अपडेट",
+      soilHealth: "मृदा स्वास्थ्य कार्ड वितरण",
+      waterSupply: "पेयजल आपूर्ति रखरखाव",
+      digitalCamp: "डिजिटल सेवा शिविर",
+      skillTraining: "निःशुल्क सिलाई कौशल प्रशिक्षण",
       searchPlaceholder: "योजना का नाम खोजें..."
     },
     te: {
-      appName: "జన్మిత్ర AI",
+      appName: "ASHA Copilot",
       copilot: "COPILOT",
       subtitle: "మీ బహుభాషా ప్రభుత్వ సహాయక భాగస్వామి",
       loading: "AI సేవలు ప్రారంభమవుతున్నాయి...",
@@ -263,10 +301,14 @@ export default function Home() {
       schemeDeadline: "పథకం దరఖాస్తు గడువు",
       referralHospital: "సమీప ప్రభుత్వ ఆసుపత్రి",
       pensionUpdate: "పెన్షన్ సమాచారం",
+      soilHealth: "నేల ఆరోగ్య కార్డ్ పంపిణీ",
+      waterSupply: "తాగునీటి సరఫరా నిర్వహణ",
+      digitalCamp: "డిజిటల్ సేవ క్యాంపు",
+      skillTraining: "ఉచిత కుట్టు మిషన్ శిక్షణ",
       searchPlaceholder: "పథకం పేరును శోధించండి..."
     },
     en: {
-      appName: "JanMitra AI",
+      appName: "ASHA Copilot",
       copilot: "COPILOT",
       subtitle: "Your Multilingual Government Assistance Companion",
       loading: "Initializing AI Services...",
@@ -308,6 +350,10 @@ export default function Home() {
       schemeDeadline: "Scheme Registration Deadline",
       referralHospital: "Nearest Referral PHC",
       pensionUpdate: "Social Welfare Pension Update",
+      soilHealth: "Soil Health Card Distribution",
+      waterSupply: "Drinking Water Supply Maintenance",
+      digitalCamp: "Digital Seva Service Camp",
+      skillTraining: "Free Sewing Machine Skill Training",
       searchPlaceholder: "Search schemes..."
     }
   };
@@ -342,6 +388,15 @@ export default function Home() {
     return found.name;
   };
 
+  const matchesCategory = (categories?: string[]) => {
+    if (!categories) return true;
+    return categories.some(cat => {
+      const cleanCat = cat.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim().toLowerCase();
+      const cleanSelected = selectedCategory.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim().toLowerCase();
+      return cleanCat.includes(cleanSelected) || cleanSelected.includes(cleanCat);
+    });
+  };
+
   const suggestionPills = [
     {
       hi: "आयुष्मान भारत योजना क्या है?",
@@ -372,7 +427,8 @@ export default function Home() {
       benefit: "₹5,000 cash incentive in 3 installments",
       eligibility: "Pregnant women and lactating mothers for their first child.",
       icon: "🤰",
-      tags: ["Pregnancy", "Women", "Health"]
+      tags: ["Pregnancy", "Women", "Health"],
+      categories: ["Health & Medical Services 🏥", "Nutrition & Child Welfare 🍎", "Women Empowerment & Welfare 👩"]
     },
     {
       name: "Janani Suraksha Yojana (JSY)",
@@ -380,7 +436,8 @@ export default function Home() {
       benefit: "Cash assistance of ₹1,400 (Rural) and ₹700 (Urban) directly to mother.",
       eligibility: "Low-income pregnant women prioritizing rural areas.",
       icon: "🏥",
-      tags: ["Pregnancy", "Health", "Rural"]
+      tags: ["Pregnancy", "Health", "Rural"],
+      categories: ["Health & Medical Services 🏥", "Women Empowerment & Welfare 👩"]
     },
     {
       name: "Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA)",
@@ -388,7 +445,8 @@ export default function Home() {
       benefit: "Free medical diagnostics, OB-GYN consultations, and nutritional therapy guidelines.",
       eligibility: "Pregnant women in their 2nd and 3rd trimesters.",
       icon: "👩‍⚕️",
-      tags: ["Pregnancy", "Health"]
+      tags: ["Pregnancy", "Health"],
+      categories: ["Health & Medical Services 🏥", "Women Empowerment & Welfare 👩"]
     },
     {
       name: "Lado Protsahan Scheme",
@@ -396,7 +454,8 @@ export default function Home() {
       benefit: "₹2,00,000 savings bond directly upon institutional birth.",
       eligibility: "Girl children born in low-income registered families.",
       icon: "👧",
-      tags: ["Women", "Students"]
+      tags: ["Women", "Students"],
+      categories: ["Women Empowerment & Welfare 👩", "Education & Youth Development 🎓"]
     },
     {
       name: "PM Kisan Samman Nidhi",
@@ -404,7 +463,8 @@ export default function Home() {
       benefit: "₹6,000 yearly credit delivered in three equal ₹2,000 installments.",
       eligibility: "All small and marginal landholder farmer families.",
       icon: "🌾",
-      tags: ["Farmers", "Rural"]
+      tags: ["Farmers", "Rural"],
+      categories: ["Agriculture & Allied Activities 🌾", "Rural Development & Panchayat 🏡", "Banking & Financial Inclusion 🏦"]
     },
     {
       name: "Post-Matric Scholarship Scheme",
@@ -412,7 +472,44 @@ export default function Home() {
       benefit: "100% academic fee waiver and monthly stipend up to ₹1,200.",
       eligibility: "Students from scheduled castes or backward classes with income < ₹2.5LPA.",
       icon: "🎓",
-      tags: ["Students", "Education"]
+      tags: ["Students", "Education"],
+      categories: ["Education & Youth Development 🎓", "Skill Development & Employment 🛠️"]
+    },
+    {
+      name: "PM Garib Kalyan Anna Yojana (PMGKAY)",
+      desc: "Free food grains scheme to guarantee food security to low-income and priority households.",
+      benefit: "5kg of free food grains per month per person",
+      eligibility: "Antyodaya Anna Yojana (AAY) and Priority Households (PHH) cardholders.",
+      icon: "🍚",
+      tags: ["Food", "Nutrition", "Rural"],
+      categories: ["Food & Public Distribution 🍚", "Nutrition & Child Welfare 🍎", "Rural Development & Panchayat 🏡"]
+    },
+    {
+      name: "Swachh Bharat Mission (Grameen)",
+      desc: "Financial assistance to rural households to construct individual household latrines (IHHL) to eliminate open defecation.",
+      benefit: "₹12,000 financial incentive for constructing toilet",
+      eligibility: "All rural households without a sanitation facility.",
+      icon: "♻️",
+      tags: ["Sanitation", "Health", "Rural"],
+      categories: ["Sanitation & Environmental Services ♻️", "Rural Development & Panchayat 🏡"]
+    },
+    {
+      name: "PM SVANidhi",
+      desc: "Special micro-credit facility for street vendors to resume their livelihoods post pandemic.",
+      benefit: "Collateral-free working capital loan up to ₹10,000",
+      eligibility: "All street vendors active in urban areas.",
+      icon: "🏙️",
+      tags: ["Urban", "Finance", "Employment"],
+      categories: ["Urban Community Support 🏙️", "Skill Development & Employment 🛠️", "Banking & Financial Inclusion 🏦"]
+    },
+    {
+      name: "Pradhan Mantri Jan Dhan Yojana (PMJDY)",
+      desc: "National mission for financial inclusion to ensure access to financial services like savings, deposit accounts, remittance, credit, insurance, and pension.",
+      benefit: "Zero balance savings account, Rupay debit card, ₹10,000 overdraft facility",
+      eligibility: "Any Indian citizen without an existing bank account.",
+      icon: "🏦",
+      tags: ["Banking", "Finance", "Rural"],
+      categories: ["Banking & Financial Inclusion 🏦", "Digital & E-Governance 💻"]
     }
   ];
 
@@ -422,18 +519,72 @@ export default function Home() {
     localStorage.setItem("asha_lang", lang);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone) return;
-    
-    // Simulate persistent local storage login
-    const parsedName = phone.includes("9876") ? "सुषमा देवी" : "ASHA Worker";
-    setUserName(parsedName);
-    setIsLoggedIn(true);
-    localStorage.setItem("asha_logged_in", "true");
-    localStorage.setItem("asha_username", parsedName);
-    
-    setCurrentStep("category");
+    if (!phone || !password) return;
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: phone, password: password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const parsedName = phone === "asha_worker" ? "सुषमा देवी" : phone;
+        setUserName(parsedName);
+        setIsLoggedIn(true);
+        localStorage.setItem("asha_logged_in", "true");
+        localStorage.setItem("asha_username", parsedName);
+        setCurrentStep("category");
+        return;
+      } else {
+        const errorData = await response.json();
+        alert(errorData.detail || "Invalid username or password");
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend login failed, using simulation fallback:", err);
+      if (password === "password" || password === "password123" || password === "asha_worker") {
+        const parsedName = phone.includes("9876") || phone === "asha_worker" ? "सुषमा देवी" : "ASHA Worker";
+        setUserName(parsedName);
+        setIsLoggedIn(true);
+        localStorage.setItem("asha_logged_in", "true");
+        localStorage.setItem("asha_username", parsedName);
+        setCurrentStep("category");
+      } else {
+        alert("Invalid credentials (Demo password: 'password' or 'password123')");
+      }
+    }
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone || !password || !userName) {
+      alert("Please fill in all fields (Full Name, Username, and Password).");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: phone, password: password })
+      });
+
+      if (response.ok) {
+        alert("Registration successful! Please login with your credentials.");
+        setIsSignupMode(false);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.detail || "Registration failed. Username might already exist.");
+      }
+    } catch (err) {
+      console.warn("Backend signup failed, using simulation fallback:", err);
+      alert("Registration successful! (Offline Demo Mode Enabled)");
+      setIsSignupMode(false);
+    }
   };
 
   const handleLogout = () => {
@@ -442,7 +593,7 @@ export default function Home() {
     setCurrentStep("login");
   };
 
-  const handleSendChat = () => {
+  const handleSendChat = async () => {
     if (!chatInput.trim()) return;
 
     const userMsg: Message = {
@@ -456,93 +607,265 @@ export default function Home() {
     setChatInput("");
     setIsTyping(true);
 
-    // Simulate AI response based on standard Indian healthcare guidelines
-    setTimeout(() => {
-      let botResponse = "मुझे आपकी बात समझ आ गई है। मैं डेटाबेस में संबंधित जानकारी ढूंढ रहा हूँ...";
-      if (language === "te") botResponse = "నేను మీ ప్రశ్నను విశ్లేషిస్తున్నాను. సంబంధిత సమాచారం కోసం వెతుకుతున్నాను...";
-      if (language === "en") botResponse = "I have received your query. Searching government databases for matching schemes or clinical guidelines...";
+    const isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
 
-      const textLower = userMsg.text.toLowerCase();
-      if (textLower.includes("pregnant") || textLower.includes("गर्भवती") || textLower.includes("గర్భిణీ")) {
-        if (language === "hi") {
-          botResponse = "गर्भवती महिलाओं के लिए प्रमुख कल्याणकारी योजनाओं में **प्रधानमंत्री मातृ वंदना योजना (PMMVY)** शामिल है, जिसके तहत **₹5,000** की सहायता प्रदान की जाती है। सुरक्षित प्रसव के लिए **जननी सुरक्षा योजना (JSY)** और मासिक जाँच के लिए **PMSMA** उपलब्ध है।";
-        } else if (language === "te") {
-          botResponse = "గర్భిణీ స్త్రీల సంక్షేమం కొరకు **ప్రధానమంత్రి మాతృ వందన యోజన (PMMVY)** ద్వారా **₹5,000** ఆర్థిక సాయం లభిస్తుంది. సురక్షిత ప్రసవం కోసం **జనని సురక్ష యోజన (JSY)** ఉపయోగపడుతుంది.";
-        } else {
-          botResponse = "For pregnant women, the **PM Matru Vandana Yojana (PMMVY)** provides **₹5,000** in cash transfers. The **Janani Suraksha Yojana (JSY)** gives cash support for deliveries, and **PMSMA** offers free medical diagnostics on the 9th of every month.";
-        }
-      } else if (textLower.includes("hospital") || textLower.includes("अस्पताल") || textLower.includes("ఆసుపత్రి")) {
-        if (language === "hi") {
-          botResponse = "आपके गाँव से सबसे नज़दीकी **प्राथमिक स्वास्थ्य केंद्र (PHC) गोपालपुरम** में स्थित है, जो 4 किमी दूरी पर है। आपातकालीन सहायता के लिए आप **102 / 108** डायल कर सकती हैं।";
-        } else if (language === "te") {
-          botResponse = "మీ గ్రామానికి అత్యంత సమీపంలో ఉన్న **ప్రాథమిక ఆరోగ్య కేంద్రం (PHC) గోపాలపురం** లో ఉంది (4 కి.మీ దూరంలో). అత్యవసర అంబులెన్స్ కోసం **102 / 108** కి కాల్ చేయండి.";
-        } else {
-          botResponse = "The nearest **Primary Health Centre (PHC)** to your registered location is in **Gopalapuram** (4 km away). For free emergency transport, dial **102 / 108** government ambulance services.";
-        }
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/rag-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: userMsg.text,
+          category: selectedCategory,
+          is_offline: isOffline
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("HTTP error " + response.status);
       }
 
+      const data = await response.json();
+      
       const botMsg: Message = {
         id: "b-" + Date.now(),
         sender: "bot",
-        text: botResponse,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        text: data.reroute ? data.reroute_message : (data.answer || "Sorry, I couldn't find guidelines for that query."),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        reroute: data.reroute || false,
+        detectedCategory: data.detected_category || undefined
       };
+
+      if (!data.reroute && data.sources && data.sources.length > 0) {
+        if (language === "hi") {
+          botMsg.text += `\n\n**स्रोत:** ${data.sources.join(', ')}`;
+        } else if (language === "te") {
+          botMsg.text += `\n\n**మూలాలు:** ${data.sources.join(', ')}`;
+        } else {
+          botMsg.text += `\n\n**Sources:** ${data.sources.join(', ')}`;
+        }
+      }
 
       setChatMessages(prev => [...prev, botMsg]);
       setIsTyping(false);
-    }, 1500);
+    } catch (err) {
+      console.warn("Backend RAG query failed, using simulation fallback:", err);
+      
+      // Fallback simulation
+      setTimeout(() => {
+        let botResponse = "मुझे आपकी बात समझ आ गई है। मैं डेटाबेस में संबंधित जानकारी ढूंढ रहा हूँ...";
+        if (language === "te") botResponse = "నేను మీ ప్రశ్నను విశ్లేషిస్తున్నాను. సంబంధిత సమాచారం కోసం వెతుకుతున్నాను...";
+        if (language === "en") botResponse = "I have received your query. Searching government databases for matching schemes or clinical guidelines...";
+
+        const textLower = userMsg.text.toLowerCase();
+        if (textLower.includes("pregnant") || textLower.includes("गर्भवती") || textLower.includes("గర్భిణీ")) {
+          if (language === "hi") {
+            botResponse = "गर्भवती महिलाओं के लिए प्रमुख कल्याणकारी योजनाओं में **प्रधानमंत्री मातृ वंदना योजना (PMMVY)** शामिल है, जिसके तहत **₹5,000** की सहायता प्रदान की जाती है। सुरक्षित प्रसव के लिए **जननी सुरक्षा योजना (JSY)** और मासिक जाँच के लिए **PMSMA** उपलब्ध है।";
+          } else if (language === "te") {
+            botResponse = "గర్భిణీ స్త్రీల సంక్షేమం కొరకు **ప్రధానమంత్రి మాతృ వందన యోజన (PMMVY)** ద్వారా **₹5,000** ఆర్థిక సాయం లభిస్తుంది. సురక్షిత ప్రసవం కోసం **జనని సురక్ష యోజన (JSY)** ఉపయోగపడుతుంది.";
+          } else {
+            botResponse = "For pregnant women, the **PM Matru Vandana Yojana (PMMVY)** provides **₹5,000** in cash transfers. The **Janani Suraksha Yojana (JSY)** gives cash support for deliveries, and **PMSMA** offers free medical diagnostics on the 9th of every month.";
+          }
+        } else if (textLower.includes("hospital") || textLower.includes("अस्पताल") || textLower.includes("ఆసుపత్రి")) {
+          if (language === "hi") {
+            botResponse = "आपके गाँव से सबसे नज़दीकी **प्राथमिक स्वास्थ्य केंद्र (PHC) गोपालपुरम** में स्थित है, जो 4 किमी दूरी पर है। आपातकालीन सहायता के लिए आप **102 / 108** डायल कर सकती हैं।";
+          } else if (language === "te") {
+            botResponse = "మీ గ్రామానికి అత్యంత సమీపంలో ఉన్న **ప్రాథమిక ఆరోగ్య కేంద్రం (PHC) గోపాలపురం** లో ఉంది (4 కి.మీ దూరంలో). అత్యవసర అంబులెన్స్ కోసం **102 / 108** కి కాల్ చేయండి.";
+          } else {
+            botResponse = "The nearest **Primary Health Centre (PHC)** to your registered location is in **Gopalapuram** (4 km away). For free emergency transport, dial **102 / 108** government ambulance services.";
+          }
+        }
+
+        const botMsg: Message = {
+          id: "b-" + Date.now(),
+          sender: "bot",
+          text: botResponse,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setChatMessages(prev => [...prev, botMsg]);
+        setIsTyping(false);
+      }, 1000);
+    }
   };
 
-  // Simulate Mic speaking/listening
+  // Real Mic speaking/listening with simulation fallback
   const handleMicClick = () => {
     if (isSpeaking) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
       setIsSpeaking(false);
       setMicPulse(false);
       return;
     }
 
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      runMicSimulation();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+
+    const langCode = language === "hi" ? "hi-IN" : language === "te" ? "te-IN" : "en-IN";
+    recognition.lang = langCode;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsSpeaking(true);
+      setMicPulse(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript) {
+        setChatInput(transcript);
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      console.warn("Speech recognition error, falling back to simulation:", e);
+      setIsSpeaking(false);
+      setMicPulse(false);
+      runMicSimulation();
+    };
+
+    recognition.onend = () => {
+      setIsSpeaking(false);
+      setMicPulse(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Speech recognition start failed:", e);
+      runMicSimulation();
+    }
+  };
+
+  const runMicSimulation = () => {
     setIsSpeaking(true);
     setMicPulse(true);
 
-    // After 3 seconds, generate a voice simulated message
     setTimeout(() => {
       let voiceText = "क्या लक्ष्मी देवी को टीकाकरण के बाद बुखार आना सामान्य है?";
       if (language === "te") voiceText = "లక్ష్మి దేవికి టీకా వేసిన తర్వాత జ్వరం రావడం సాధారణమేనా?";
       if (language === "en") voiceText = "Is it normal for Lakshmi Devi to get a fever after her DPT vaccination?";
 
-      const userVoiceMsg: Message = {
-        id: "u-v-" + Date.now(),
-        sender: "user",
-        text: `🎤 [आवाज़ / Voice]: "${voiceText}"`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setChatMessages(prev => [...prev, userVoiceMsg]);
+      setChatInput(voiceText);
       setIsSpeaking(false);
       setMicPulse(false);
-      setIsTyping(true);
+    }, 2500);
+  };
 
-      setTimeout(() => {
-        let botVoiceResponse = "हाँ! पेंटावेलेंट या DPT टीकाकरण के बाद बच्चों में **हल्का बुखार आना सामान्य बात है**। यह दर्शाता है कि टीका ठीक से काम कर रहा है। बुखार कम करने के लिए डॉक्टर की सलाह के अनुसार पैरासिटामोल ड्रॉप्स (15mg/kg) दे सकती हैं। यदि बुखार 102.5°F से अधिक हो या 48 घंटे से ज़्यादा रहे, तो तुरंत PHC ले जाएँ।";
-        if (language === "te") botVoiceResponse = "అవును! పెంటావాలెంట్ లేదా DPT టీకా తర్వాత శిశువులకు **తేలికపాటి జ్వరం రావడం సాధారణం**. దీని అర్థం టీకా చక్కగా పనిచేస్తోంది. శిశువు బరువు ప్రకారం పారాసిటమాల్ డ్రాప్స్ ఇవ్వవచ్చు. జ్వరం 102.5°F దాటినా, లేదా 48 గంటల కంటే ఎక్కువ సమయం ఉన్నా PHC వైద్యులను సంప్రదించండి.";
-        if (language === "en") botVoiceResponse = "Yes! **Mild fever (up to 101°F) is a very common reaction** after DPT or Pentavalent vaccines. It shows the vaccine is working. Give Paracetamol drops based on weight (15mg/kg) every 4-6 hours if needed. If the fever exceeds 102.5°F or lasts > 48 hours, refer immediately to the PHC.";
+  // --- TEXT-TO-SPEECH: Read bot message aloud ---
+  const handleSpeakMessage = (msgId: string, text: string) => {
+    if (!window.speechSynthesis) return;
 
-        const botVoiceMsg: Message = {
-          id: "b-v-" + Date.now(),
-          sender: "bot",
-          text: botVoiceResponse,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
+    // If already speaking this message, cancel it
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
+    }
 
-        setChatMessages(prev => [...prev, botVoiceMsg]);
-        setIsTyping(false);
-      }, 1500);
-    }, 3500);
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Strip markdown bold markers (**text**) for cleaner speech
+    const cleanText = text.replace(/\*\*(.*?)\*\*/g, "$1");
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    activeUtteranceRef.current = utterance; // Prevent GC bug in Chromium
+
+    const langCode = language === "hi" ? "hi-IN" : language === "te" ? "te-IN" : "en-IN";
+    utterance.lang = langCode;
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // Pre-select matching voice
+    const voices = window.speechSynthesis.getVoices();
+    let matchingVoice = voices.find(v => v.lang.toLowerCase() === langCode.toLowerCase());
+    if (!matchingVoice) {
+      matchingVoice = voices.find(v => v.lang.toLowerCase().startsWith(langCode.split('-')[0]));
+    }
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
+    }
+
+    utterance.onstart = () => setSpeakingMsgId(msgId);
+    utterance.onend = () => {
+      setSpeakingMsgId(null);
+      activeUtteranceRef.current = null;
+    };
+    utterance.onerror = () => {
+      setSpeakingMsgId(null);
+      activeUtteranceRef.current = null;
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
   // Click Suggestion Pills
   const handlePillClick = (text: string) => {
     setChatInput(text);
+  };
+
+  // Real high-tech Aadhaar OCR scanning
+  const handleOcrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processOcrFile(file);
+  };
+
+  const processOcrFile = async (file: File) => {
+    setOcrStatus("uploading");
+    
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // Small delay for animation transition
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setOcrStatus("scanning");
+
+      const response = await fetch("http://127.0.0.1:8000/api/ocr", {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOcrStatus("success");
+        setOcrData({
+          name: data.name || "N/A",
+          dob: data.dob || "N/A",
+          gender: data.gender || "N/A",
+          aadhaar: data.aadhaar || "XXXX-XXXX-0000",
+          address: data.address || "N/A"
+        });
+      } else {
+        throw new Error("OCR Server Error");
+      }
+    } catch (err) {
+      console.warn("Backend OCR failed, using simulation fallback:", err);
+      setOcrStatus("scanning");
+      setTimeout(() => {
+        setOcrStatus("success");
+        setOcrData({
+          name: "SUSHMA DEVI",
+          dob: "12/04/1998",
+          gender: "FEMALE",
+          aadhaar: "XXXX-XXXX-8921",
+          address: "GOPALAPURAM VILLAGE, WARD 3, ANDHRA PRADESH"
+        });
+      }, 2000);
+    }
   };
 
   // Simulate high-tech Aadhaar OCR scanning
@@ -586,10 +909,10 @@ export default function Home() {
             </svg>
           </div>
           <h1 className="mt-8 text-4xl sm:text-5xl font-extrabold tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-purple-400 bg-clip-text text-transparent glow-text-cyan font-heading">
-            JanMitra AI Copilot
+            ASHA Copilot
           </h1>
           <p className="mt-3 text-slate-400 text-lg sm:text-xl font-light tracking-wide text-center">
-            Your Multilingual Government Assistance Companion
+            Advanced System for Human Assistance — Government AI Companion
           </p>
           <div className="mt-16 w-48 h-1 bg-slate-800 rounded-full overflow-hidden relative">
             <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 to-purple-500 w-1/3 rounded-full animate-[laserScan_1.5s_infinite_linear]"></div>
@@ -613,7 +936,7 @@ export default function Home() {
             </div>
             
             <h2 className="mt-6 text-2xl sm:text-3xl font-extrabold text-white text-center font-heading">
-              JanMitra AI
+              ASHA Copilot
             </h2>
             <p className="mt-2 text-slate-400 text-sm text-center">
               Choose your preferred language / अपनी पसंदीदा भाषा चुनें / మీ ప్రాధాన్యత భాషను ఎంచుకోండి
@@ -684,21 +1007,21 @@ export default function Home() {
           <div className="w-full max-w-4xl glass-panel-heavy rounded-2xl overflow-hidden grid md:grid-cols-2 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
             
             {/* Left Side: Modern Gov-Tech Cyber Illustration */}
-            <div className="hidden md:flex flex-col justify-between p-8 bg-gradient-to-br from-[#1E293B] to-[#0F172A] border-r border-slate-800">
+            <div className="hidden md:flex flex-col justify-between p-8 bg-gradient-to-br from-sidebar-bg to-background border-r border-border-color">
               <div>
                 <span className="text-sm font-semibold tracking-wider text-cyan-400 uppercase font-heading">
                   🇮🇳 National e-Governance Portal
                 </span>
-                <h3 className="mt-3 text-3xl font-extrabold text-white leading-tight font-heading">
+                <h3 className="mt-3 text-3xl font-extrabold text-foreground leading-tight font-heading">
                   AI Assured Health & Social Empowerment
                 </h3>
-                <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+                <p className="mt-3 text-slate-400 dark:text-slate-400 text-sm leading-relaxed">
                   Interactive voice logs, optical document OCR scanners, and instant regional scheme matching designed for rural workers, ASHA companions, and farmers.
                 </p>
               </div>
 
               {/* Glowing decorative dashboard preview mock */}
-              <div className="w-full aspect-video rounded-xl bg-slate-900/60 p-4 border border-slate-700/50 shadow-inner flex flex-col justify-between">
+              <div className="w-full aspect-video rounded-xl bg-input-bg p-4 border border-border-color shadow-inner flex flex-col justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-red-500"></div>
                   <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
@@ -723,74 +1046,161 @@ export default function Home() {
 
             {/* Right Side: Glassmorphism Login Card */}
             <div className="p-8 sm:p-10 flex flex-col justify-center">
-              <h3 className="text-2xl font-bold text-white tracking-wide font-heading">
-                {t.welcomeBack}
-              </h3>
-              <p className="mt-1.5 text-xs text-slate-400">
-                {t.authSub}
-              </p>
+              <div className="flex justify-between items-center mb-6 border-b border-border-color pb-4">
+                <button
+                  onClick={() => setIsSignupMode(false)}
+                  className={`text-lg font-bold pb-2 transition-all cursor-pointer ${!isSignupMode ? "text-cyan-400 border-b-2 border-cyan-400" : "text-slate-400 hover:text-foreground"}`}
+                >
+                  {language === "hi" ? "लॉगिन करें" : language === "te" ? "లాగిన్" : "Login"}
+                </button>
+                <button
+                  onClick={() => setIsSignupMode(true)}
+                  className={`text-lg font-bold pb-2 transition-all cursor-pointer ${isSignupMode ? "text-cyan-400 border-b-2 border-cyan-400" : "text-slate-400 hover:text-foreground"}`}
+                >
+                  {language === "hi" ? "रजिस्टर करें" : language === "te" ? "రిజిస్టర్" : "Sign Up"}
+                </button>
+              </div>
 
-              <form onSubmit={handleLoginSubmit} className="mt-8 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300 tracking-wider">
-                    {t.phone} <span className="text-cyan-400">(Demo: 9876543210)</span>
-                  </label>
-                  <input 
-                    type="text"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Enter 10-digit number"
-                    className="w-full py-3 px-4 rounded-xl bg-slate-900/60 border border-slate-700/60 text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
-                  />
-                </div>
+              {!isSignupMode ? (
+                <>
+                  <h3 className="text-xl font-bold text-foreground tracking-wide font-heading">
+                    {t.welcomeBack}
+                  </h3>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    {t.authSub}
+                  </p>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300 tracking-wider">
-                    {t.password} <span className="text-cyan-400">(Demo: password)</span>
-                  </label>
-                  <input 
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full py-3 px-4 rounded-xl bg-slate-900/60 border border-slate-700/60 text-white placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
-                  />
-                </div>
+                  <form onSubmit={handleLoginSubmit} className="mt-6 space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">
+                        {language === "hi" ? "यूज़रनेम / फ़ोन नंबर" : language === "te" ? "వినియోగదారు పేరు / ఫోన్" : "Username / Phone"} <span className="text-cyan-400">(Demo: asha_worker)</span>
+                      </label>
+                      <input 
+                        type="text"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter username or number"
+                        className="w-full py-3 px-4 rounded-xl bg-input-bg border border-border-color text-foreground placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
+                      />
+                    </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" defaultChecked className="rounded border-slate-700 text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-slate-900" />
-                    <span>{t.rememberMe}</span>
-                  </label>
-                  <button type="button" className="text-cyan-400 hover:underline">Forgot Password?</button>
-                </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">
+                        {t.password} <span className="text-cyan-400">(Demo: password123)</span>
+                      </label>
+                      <input 
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full py-3 px-4 rounded-xl bg-input-bg border border-border-color text-foreground placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
+                      />
+                    </div>
 
-                <div className="space-y-3 pt-2">
-                  <button 
-                    type="submit"
-                    className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(0,194,255,0.25)] hover:shadow-[0_0_30px_rgba(0,194,255,0.4)] active:scale-98 transition-all duration-200 accessible-focus"
-                  >
-                    {t.login}
-                  </button>
-                  <button 
-                    type="submit"
-                    className="w-full py-3 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium rounded-xl border border-slate-700/60 transition-all duration-200"
-                  >
-                    {t.otpLogin}
-                  </button>
-                </div>
-              </form>
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" defaultChecked className="rounded border-border-color text-cyan-500 focus:ring-0 focus:ring-offset-0 bg-input-bg" />
+                        <span>{t.rememberMe}</span>
+                      </label>
+                      <button type="button" className="text-cyan-400 hover:underline">Forgot Password?</button>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <button 
+                        type="submit"
+                        className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(0,194,255,0.25)] hover:shadow-[0_0_30px_rgba(0,194,255,0.4)] active:scale-98 transition-all duration-200 accessible-focus cursor-pointer"
+                      >
+                        {t.login}
+                      </button>
+                      <button 
+                        type="submit"
+                        className="w-full py-3 bg-input-bg hover:bg-input-bg/80 text-foreground font-medium rounded-xl border border-border-color transition-all duration-200 cursor-pointer"
+                      >
+                        {t.otpLogin}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-xl font-bold text-foreground tracking-wide font-heading">
+                    {language === "hi" ? "नया खाता बनाएँ" : language === "te" ? "కొత్త ఖాతాను సృష్టించండి" : "Create New Account"}
+                  </h3>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    {language === "hi" ? "सिस्टम में शामिल होने के लिए विवरण भरें" : language === "te" ? "సిస్టమ్‌లో చేరడానికి వివరాలను నమోదు చేయండి" : "Fill in the details below to join the system"}
+                  </p>
+
+                  <form onSubmit={handleSignupSubmit} className="mt-6 space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">
+                        {language === "hi" ? "पूरा नाम" : language === "te" ? "పూర్తి పేరు" : "Full Name"}
+                      </label>
+                      <input 
+                        type="text"
+                        required
+                        value={userName}
+                        onChange={(e) => setUserName(e.target.value)}
+                        placeholder="Enter full name"
+                        className="w-full py-3 px-4 rounded-xl bg-input-bg border border-border-color text-foreground placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">
+                        {language === "hi" ? "यूज़रनेम / फ़ोन नंबर" : language === "te" ? "వినియోగదారు పేరు / ఫోన్" : "Username / Phone"}
+                      </label>
+                      <input 
+                        type="text"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter desired username or number"
+                        className="w-full py-3 px-4 rounded-xl bg-input-bg border border-border-color text-foreground placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-300 tracking-wider">
+                        {t.password}
+                      </label>
+                      <input 
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full py-3 px-4 rounded-xl bg-input-bg border border-border-color text-foreground placeholder-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <button 
+                        type="submit"
+                        className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(0,194,255,0.25)] hover:shadow-[0_0_30px_rgba(0,194,255,0.4)] active:scale-98 transition-all duration-200 accessible-focus cursor-pointer"
+                      >
+                        {language === "hi" ? "रजिस्टर करें" : language === "te" ? "రిజిస్టర్" : "Register"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
 
               {/* Voice Assistance Button */}
               <div className="mt-8 flex items-center justify-center">
                 <button 
                   onClick={() => {
-                    setPhone("9876543210");
-                    setPassword("password");
+                    if (isSignupMode) {
+                      setUserName("सुषमा देवी");
+                      setPhone("asha_worker");
+                      setPassword("password123");
+                    } else {
+                      setPhone("asha_worker");
+                      setPassword("password123");
+                    }
                   }}
-                  className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-cyan-950/40 text-cyan-300 border border-cyan-800/40 text-xs font-semibold hover:bg-cyan-950/60 active:scale-95 transition-all shadow-[0_0_10px_rgba(0,194,255,0.08)] cursor-pointer"
+                  className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border border-cyan-500/20 text-xs font-semibold hover:bg-cyan-500/20 active:scale-95 transition-all shadow-[0_0_10px_rgba(0,194,255,0.08)] cursor-pointer"
                 >
                   <svg className="w-4 h-4 text-cyan-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -869,7 +1279,7 @@ export default function Home() {
           {/* --------------------------------------------------------
               LEFT SIDEBAR
               -------------------------------------------------------- */}
-          <aside className="w-full md:w-[280px] bg-[#111827]/85 border-b md:border-r border-slate-800/60 backdrop-blur-xl flex flex-col justify-between shrink-0 p-4 md:p-5 z-20">
+          <aside className="w-full md:w-[280px] bg-sidebar-bg border-b md:border-r border-border-color backdrop-blur-xl flex flex-col justify-between shrink-0 p-4 md:p-5 z-20">
             
             <div className="space-y-6">
               {/* App Brand Header */}
@@ -880,17 +1290,17 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-base font-extrabold tracking-wider text-white font-heading leading-tight uppercase">
-                    {t.appName.split(" ")[0]} <span className="text-cyan-400">{t.appName.split(" ")[1] || "AI"}</span>
+                  <span className="text-base font-extrabold tracking-wider text-white font-heading leading-tight">
+                    ASHA <span className="text-cyan-400">Copilot</span>
                   </span>
                   <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase leading-none">
-                    {t.copilot}
+                    AI ASSISTANT
                   </span>
                 </div>
               </div>
 
               {/* Profile Card Info Panel */}
-              <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/40 flex items-center gap-3">
+              <div className="p-3.5 rounded-xl bg-input-bg border border-border-color flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 p-0.5 shadow-md">
                   <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-base">
                     👩
@@ -909,7 +1319,7 @@ export default function Home() {
                 </label>
                 <button 
                   onClick={() => setCurrentStep("category")}
-                  className="w-full p-2.5 rounded-lg bg-slate-800/30 border border-slate-700/50 hover:bg-slate-800/60 transition-all text-xs text-left text-cyan-300 flex items-center justify-between"
+                  className="w-full p-2.5 rounded-lg bg-input-bg/50 border border-border-color hover:bg-input-bg transition-all text-xs text-left text-cyan-300 flex items-center justify-between"
                 >
                   <span className="truncate">{getLocalizedCategoryName(selectedCategory)}</span>
                   <span className="text-slate-500 font-bold">&rarr;</span>
@@ -985,11 +1395,12 @@ export default function Home() {
               {/* Theme Selector + Signout */}
               <div className="flex items-center justify-between text-xs">
                 <button 
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-lg bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/60 text-slate-300"
+                  onClick={() => setTheme(prev => prev === "dark" ? "light" : "dark")}
+                  className="flex items-center gap-1.5 p-2 px-3 rounded-lg bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/60 text-slate-300 transition-all"
                   title="Toggle Theme"
                 >
-                  {theme === "dark" ? "☀️" : "🌙"}
+                  <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+                  <span className="text-[10px] font-semibold">{theme === "dark" ? "Light" : "Dark"}</span>
                 </button>
                 <button 
                   onClick={handleLogout}
@@ -1006,10 +1417,10 @@ export default function Home() {
           {/* --------------------------------------------------------
               RIGHT MAIN PANEL
               -------------------------------------------------------- */}
-          <main className="flex-1 flex flex-col bg-[#0F172A] z-10 relative overflow-hidden">
+          <main className="flex-1 flex flex-col bg-transparent z-10 relative overflow-hidden">
             
             {/* Top Workspace Header */}
-            <header className="py-4 px-6 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/20 backdrop-blur-md">
+            <header className="py-4 px-6 border-b border-border-color flex items-center justify-between bg-header-bg backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shadow-md">
@@ -1019,7 +1430,7 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white tracking-wide font-heading">
-                    {language === "hi" ? "जनमित्र AI सहायक" : language === "te" ? "జన్మిత్ర AI సహాయకుడు" : "JanMitra AI Assistant"}
+                    {language === "hi" ? "ASHA Copilot AI सहायक" : language === "te" ? "ASHA Copilot AI సహాయకుడు" : "ASHA Copilot AI Assistant"}
                   </h3>
                   <span className="text-[10px] text-slate-500 font-bold flex items-center gap-1 uppercase tracking-widest">
                     {t.onlineStatus}
@@ -1086,13 +1497,61 @@ export default function Home() {
                               </ul>
                             )}
 
+                            {/* Dynamic Reroute/Category Switcher Card */}
+                            {msg.reroute && msg.detectedCategory && (
+                              <div className="mt-4 p-3 rounded bg-slate-900/80 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-white">
+                                <div className="text-xs text-cyan-200">
+                                  {language === "hi" ? "कार्यक्षेत्र को बदलें: " : language === "te" ? "పనిచేసే విభాగాన్ని మార్చండి: " : "Switch workspace to: "} 
+                                  <strong>{getLocalizedCategoryName(msg.detectedCategory)}</strong>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (msg.detectedCategory) {
+                                      setSelectedCategory(msg.detectedCategory);
+                                      const confirmMsg: Message = {
+                                        id: "b-" + Date.now(),
+                                        sender: "bot",
+                                        text: language === "hi" 
+                                          ? `✅ श्रेणी बदलकर **${getLocalizedCategoryName(msg.detectedCategory)}** कर दी गई है। मैं इस विभाग में आपकी क्या मदद कर सकता हूँ?` 
+                                          : language === "te" 
+                                            ? `✅ వర్గం **${getLocalizedCategoryName(msg.detectedCategory)}** కి మార్చబడింది. ఈ విభాగంలో నేను మీకు ఎలా సహాయపడగలను?` 
+                                            : `✅ Category switched to **${getLocalizedCategoryName(msg.detectedCategory)}**. How can I help you in this department?`,
+                                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                      };
+                                      setChatMessages(prev => [...prev, confirmMsg]);
+                                    }
+                                  }}
+                                  className="py-1 px-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded transition-all duration-150 whitespace-nowrap cursor-pointer active:scale-95"
+                                >
+                                  {language === "hi" ? "पुष्टि करें 🔄" : language === "te" ? "ధృవీకరించు 🔄" : "Confirm 🔄"}
+                                </button>
+                              </div>
+                            )}
+
                           </div>
 
                           {/* Timestamp and feedback flags */}
                           <div className={`flex items-center gap-3 text-[10px] text-slate-500 ${isBot ? "" : "justify-end"}`}>
                             <span>{msg.timestamp}</span>
                             {isBot && (
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2">
+                                {/* 🔊 Read Aloud Button */}
+                                <button
+                                  onClick={() => handleSpeakMessage(msg.id, msg.text + (msg.listItems ? " " + msg.listItems.join(". ") : ""))}
+                                  title={speakingMsgId === msg.id ? "Stop reading" : "Read aloud"}
+                                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all duration-200 ${
+                                    speakingMsgId === msg.id
+                                      ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300 animate-pulse"
+                                      : "border-transparent hover:border-cyan-500/40 hover:text-cyan-400 hover:bg-cyan-500/10"
+                                  }`}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7.975 7.975 0 015.657 2.343m0 0A7.975 7.975 0 0120 12a7.975 7.975 0 01-2.343 5.657m0 0A7.975 7.975 0 0112 20.25M9.5 12a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zm-3.536-3.536A7.975 7.975 0 004 12a7.975 7.975 0 002.343 5.657" />
+                                  </svg>
+                                  <span className="text-[9px] font-bold tracking-wide">
+                                    {speakingMsgId === msg.id ? "STOP" : "SPEAK"}
+                                  </span>
+                                </button>
                                 <button className="hover:text-cyan-400" title="Copy text">📋</button>
                                 <button className="hover:text-cyan-400" title="Like">👍</button>
                                 <button className="hover:text-cyan-400" title="Dislike">👎</button>
@@ -1123,7 +1582,7 @@ export default function Home() {
                 </div>
 
                 {/* Bottom Center interactive suggestion bar */}
-                <div className="px-6 py-3 border-t border-slate-800/40 bg-slate-900/10">
+                <div className="px-6 py-3 border-t border-border-color bg-header-bg/50">
                   <span className="text-[10px] font-bold text-slate-500 uppercase block mb-2 tracking-wider">
                     {t.youCanAsk}
                   </span>
@@ -1144,11 +1603,11 @@ export default function Home() {
                 </div>
 
                 {/* Bottom Core glowing input search bar */}
-                <div className="p-6 border-t border-slate-800/60 bg-[#111827]/40">
-                  <div className="relative max-w-4xl mx-auto flex items-center">
-                    
-                    {/* Glowing outer boundary container */}
-                    <div className="w-full flex items-center gap-3 bg-slate-900/90 border border-slate-700/60 rounded-2xl py-3 px-4 shadow-[0_0_20px_rgba(0,194,255,0.05)] focus-within:shadow-[0_0_30px_rgba(0,194,255,0.15)] focus-within:border-cyan-400/80 transition-all duration-300">
+                <div className="p-4 pb-6 border-t border-border-color bg-sidebar-bg/40">
+                  <div className="max-w-4xl mx-auto flex flex-col items-center gap-3">
+
+                    {/* Main Input Row */}
+                    <div className="w-full flex items-center gap-3 bg-input-bg border border-border-color rounded-2xl py-3 px-4 shadow-[0_0_20px_rgba(0,194,255,0.05)] focus-within:shadow-[0_0_30px_rgba(0,194,255,0.15)] focus-within:border-cyan-400/80 transition-all duration-300">
                       
                       {/* Left Visualizer voice waves */}
                       <div className="hidden sm:flex items-center gap-0.5 shrink-0 px-1">
@@ -1164,7 +1623,7 @@ export default function Home() {
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
                         placeholder={t.inputPlaceholder}
-                        className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none border-none pl-1"
+                        className="flex-1 bg-transparent text-sm text-foreground placeholder-slate-500 outline-none border-none pl-1"
                       />
 
                       {/* Right Waveform visualizer */}
@@ -1187,23 +1646,22 @@ export default function Home() {
                           &rarr;
                         </button>
                       </div>
-
                     </div>
 
-                    {/* CENTRAL GLOWING MICROPHONE BUTTON */}
-                    <div className="absolute left-1/2 -translate-x-1/2 -top-10 flex flex-col items-center">
+                    {/* MICROPHONE BUTTON — below the input bar, always visible */}
+                    <div className="flex flex-col items-center gap-1">
                       <button 
                         onClick={handleMicClick}
-                        className={`w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 flex items-center justify-center text-white cursor-pointer transition-all duration-300 accessible-focus z-20 ${
-                          micPulse ? "animate-[pulseGlow_1.5s_infinite_ease-in-out] scale-105" : "shadow-[0_0_20px_rgba(0,194,255,0.3)] hover:scale-105"
+                        className={`w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 flex items-center justify-center text-white cursor-pointer transition-all duration-300 accessible-focus ${
+                          micPulse ? "animate-[pulseGlow_1.5s_infinite_ease-in-out] scale-110" : "shadow-[0_0_20px_rgba(0,194,255,0.3)] hover:scale-110"
                         }`}
                       >
-                        <svg className={`w-6 h-6 ${micPulse ? "animate-pulse" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <svg className={`w-5 h-5 ${micPulse ? "animate-pulse" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                         </svg>
                       </button>
-                      <span className="text-[10px] text-slate-500 font-semibold uppercase mt-1 tracking-wider">
-                        {isSpeaking ? "Listening..." : t.micSubtext}
+                      <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                        {isSpeaking ? "🔴 Listening..." : t.micSubtext}
                       </span>
                     </div>
 
@@ -1254,13 +1712,33 @@ export default function Home() {
 
                 {/* Schemes Cards Grid */}
                 <div className="flex-1 overflow-y-auto mt-6 grid md:grid-cols-2 gap-5 pr-2">
-                  {governmentSchemes
-                    .filter(s => {
+                  {(() => {
+                    const filtered = governmentSchemes.filter(s => {
                       const matchesSearch = s.name.toLowerCase().includes(schemeSearch.toLowerCase()) || s.desc.toLowerCase().includes(schemeSearch.toLowerCase());
                       const matchesFilter = selectedFilter === "All" || s.tags.includes(selectedFilter);
-                      return matchesSearch && matchesFilter;
-                    })
-                    .map((scheme) => {
+                      const matchesCat = !selectedCategory || !s.categories || matchesCategory(s.categories);
+                      return matchesSearch && matchesFilter && matchesCat;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="col-span-full py-12 text-center text-slate-500 glass-panel rounded-2xl flex flex-col items-center justify-center">
+                          <div className="text-4xl mb-3 animate-pulse">📂</div>
+                          <p className="text-sm font-medium text-slate-300">No active schemes found under the "{getLocalizedCategoryName(selectedCategory)}" category.</p>
+                          <button 
+                            onClick={() => {
+                              setSchemeSearch("");
+                              setSelectedFilter("All");
+                            }}
+                            className="mt-4 py-1.5 px-4 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-900 border border-cyan-500/30 rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer"
+                          >
+                            Reset Search & Filters
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return filtered.map((scheme) => {
                       const isExpanded = expandedScheme === scheme.name;
                       return (
                         <div 
@@ -1310,7 +1788,8 @@ export default function Home() {
                           </div>
                         </div>
                       );
-                    })}
+                    });
+                  })()}
                 </div>
 
               </div>
@@ -1333,8 +1812,37 @@ export default function Home() {
 
                 <div className="grid md:grid-cols-2 gap-8 items-start">
                   
+                  {/* Hidden file input */}
+                  <input 
+                    type="file" 
+                    id="ocr-file-input" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleOcrFileChange} 
+                  />
+
                   {/* File Upload Zone / Laser Scanner Simulation */}
-                  <div className="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-700/60 aspect-video relative overflow-hidden">
+                  <div 
+                    onClick={() => {
+                      if (ocrStatus === "idle") {
+                        document.getElementById("ocr-file-input")?.click();
+                      }
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      if (ocrStatus !== "idle") return;
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        await processOcrFile(file);
+                      }
+                    }}
+                    className={`glass-panel p-6 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-700/60 aspect-video relative overflow-hidden transition-all duration-200 ${
+                      ocrStatus === "idle" ? "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/10" : ""
+                    }`}
+                  >
                     
                     {/* Glowing Scanner laser */}
                     {ocrStatus === "scanning" && (
@@ -1344,13 +1852,18 @@ export default function Home() {
                     {ocrStatus === "idle" && (
                       <div className="text-center space-y-4">
                         <span className="text-4xl block">💳</span>
-                        <p className="text-xs text-slate-400">Drag & Drop or click below to simulate Aadhaar OCR scan</p>
-                        <button 
-                          onClick={handleOcrSimulate}
-                          className="py-2 px-5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500 hover:to-purple-600 text-cyan-300 hover:text-white font-bold rounded-xl text-xs border border-cyan-500/30 transition-all duration-200 cursor-pointer active:scale-95"
-                        >
-                          Simulate Aadhaar scan 📸
-                        </button>
+                        <p className="text-xs text-slate-400">Drag & Drop your card here, or click to upload</p>
+                        <div className="flex justify-center mt-3">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              document.getElementById("ocr-file-input")?.click();
+                            }}
+                            className="py-2.5 px-6 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-all duration-200 cursor-pointer active:scale-95"
+                          >
+                            Upload Aadhaar Card 📷
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -1410,6 +1923,7 @@ export default function Home() {
                           <input 
                             type="text"
                             value={ocrData.dob}
+                            onChange={(e) => setOcrData(prev => ({ ...prev, dob: e.target.value }))}
                             placeholder="DOB..."
                             className="w-full py-2 px-3.5 bg-slate-900/60 border border-slate-700/60 rounded-lg text-xs text-slate-200 outline-none"
                           />
@@ -1419,6 +1933,7 @@ export default function Home() {
                           <input 
                             type="text"
                             value={ocrData.gender}
+                            onChange={(e) => setOcrData(prev => ({ ...prev, gender: e.target.value }))}
                             placeholder="Gender..."
                             className="w-full py-2 px-3.5 bg-slate-900/60 border border-slate-700/60 rounded-lg text-xs text-slate-200 outline-none"
                           />
@@ -1429,6 +1944,7 @@ export default function Home() {
                         <input 
                           type="text"
                           value={ocrData.aadhaar}
+                          onChange={(e) => setOcrData(prev => ({ ...prev, aadhaar: e.target.value }))}
                           placeholder="Aadhaar..."
                           className="w-full py-2 px-3.5 bg-slate-900/60 border border-slate-700/60 rounded-lg text-xs text-slate-200 outline-none"
                         />
@@ -1437,6 +1953,7 @@ export default function Home() {
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Registered Address</label>
                         <textarea 
                           value={ocrData.address}
+                          onChange={(e) => setOcrData(prev => ({ ...prev, address: e.target.value }))}
                           rows={2}
                           placeholder="Address..."
                           className="w-full py-2 px-3.5 bg-slate-900/60 border border-slate-700/60 rounded-lg text-xs text-slate-200 outline-none resize-none"
@@ -1477,26 +1994,43 @@ export default function Home() {
                 </h3>
 
                 <div className="space-y-4">
-                  {[
-                    { id: 1, title: t.vaccineAlert, desc: "Lakshmi Devi's 9-month measles vaccination checkup is scheduled for next Tuesday at Sub-Centre Kothapalli.", type: "high_risk", date: "Due in 5 days" },
-                    { id: 2, title: t.schemeDeadline, desc: "PMMVY maternal benefit installment submission deadline closes in 4 days. Please verify documents.", type: "warning", date: "June 2, 2026" },
-                    { id: 3, title: t.referralHospital, desc: "Dr. Anjali Verma (OB-GYN) will be available at PMSMA clinic Gopalapuram on June 9th.", type: "info", date: "June 9, 2026" },
-                    { id: 4, title: t.pensionUpdate, desc: "Verification required for Old Age pension eligibility in Panchayat Cherukupalli.", type: "info", date: "Verified" }
-                  ].map((notif) => {
-                    const borderClass = notif.type === "high_risk" ? "border-l-4 border-rose-500" : notif.type === "warning" ? "border-l-4 border-amber-500" : "border-l-4 border-cyan-500";
-                    const bgClass = notif.type === "high_risk" ? "bg-rose-950/10" : notif.type === "warning" ? "bg-amber-950/10" : "bg-cyan-950/10";
-                    return (
-                      <div key={notif.id} className={`p-4 rounded-xl border border-slate-800/80 flex items-center justify-between gap-4 ${borderClass} ${bgClass}`}>
-                        <div>
-                          <h4 className="text-sm font-bold text-white font-heading leading-tight">{notif.title}</h4>
-                          <p className="mt-1.5 text-xs text-slate-400">{notif.desc}</p>
+                  {(() => {
+                    const filtered = [
+                      { id: 1, title: t.vaccineAlert, desc: "Lakshmi Devi's 9-month measles vaccination checkup is scheduled for next Tuesday at Sub-Centre Kothapalli.", type: "high_risk", date: "Due in 5 days", categories: ["Health & Medical Services 🏥", "Nutrition & Child Welfare 🍎"] },
+                      { id: 2, title: t.schemeDeadline, desc: "PMMVY maternal benefit installment submission deadline closes in 4 days. Please verify documents.", type: "warning", date: "June 2, 2026", categories: ["Health & Medical Services 🏥", "Women Empowerment & Welfare 👩", "Nutrition & Child Welfare 🍎"] },
+                      { id: 3, title: t.referralHospital, desc: "Dr. Anjali Verma (OB-GYN) will be available at PMSMA clinic Gopalapuram on June 9th.", type: "info", date: "June 9, 2026", categories: ["Health & Medical Services 🏥", "Women Empowerment & Welfare 👩"] },
+                      { id: 4, title: t.pensionUpdate, desc: "Verification required for Old Age pension eligibility in Panchayat Cherukupalli.", type: "info", date: "Verified", categories: ["Banking & Financial Inclusion 🏦", "Rural Development & Panchayat 🏡"] },
+                      { id: 5, title: t.soilHealth, desc: "Distribution of soil health reports and fertilizer guidance starts at Farmers Coop Gopalapuram tomorrow.", type: "info", date: "Tomorrow", categories: ["Agriculture & Allied Activities 🌾", "Rural Development & Panchayat 🏡"] },
+                      { id: 6, title: t.waterSupply, desc: "Water supply will be temporarily paused for 3 hours on Thursday due to pipeline cleaning.", type: "warning", date: "Thursday", categories: ["Sanitation & Environmental Services ♻️", "Rural Development & Panchayat 🏡"] },
+                      { id: 7, title: t.digitalCamp, desc: "Biometric and phone update camp for Aadhaar card holders at Panchayat office.", type: "info", date: "June 12-14", categories: ["Digital & E-Governance 💻", "Banking & Financial Inclusion 🏦"] },
+                      { id: 8, title: t.skillTraining, desc: "Free certificate course under PMKVY for women in rural villages starting next month.", type: "info", date: "Apply by June 15", categories: ["Skill Development & Employment 🛠️", "Women Empowerment & Welfare 👩"] }
+                    ].filter(notif => !selectedCategory || !notif.categories || matchesCategory(notif.categories));
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-slate-500 glass-panel rounded-2xl flex flex-col items-center justify-center">
+                          <div className="text-4xl mb-3 animate-pulse">🔔</div>
+                          <p className="text-sm font-medium text-slate-300">No active notifications for the "{getLocalizedCategoryName(selectedCategory)}" category.</p>
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">
-                          {notif.date}
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+
+                    return filtered.map((notif) => {
+                      const borderClass = notif.type === "high_risk" ? "border-l-4 border-rose-500" : notif.type === "warning" ? "border-l-4 border-amber-500" : "border-l-4 border-cyan-500";
+                      const bgClass = notif.type === "high_risk" ? "bg-rose-950/10" : notif.type === "warning" ? "bg-amber-950/10" : "bg-cyan-950/10";
+                      return (
+                        <div key={notif.id} className={`p-4 rounded-xl border border-slate-800/80 flex items-center justify-between gap-4 ${borderClass} ${bgClass}`}>
+                          <div>
+                            <h4 className="text-sm font-bold text-white font-heading leading-tight">{notif.title}</h4>
+                            <p className="mt-1.5 text-xs text-slate-400">{notif.desc}</p>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">
+                            {notif.date}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}

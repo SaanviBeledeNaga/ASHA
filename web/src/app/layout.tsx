@@ -33,9 +33,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${poppins.variable} ${notoSans.variable} h-full antialiased dark`}
+      className={`${inter.variable} ${poppins.variable} ${notoSans.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-[#0F172A] text-slate-100 selection:bg-cyan-500 selection:text-slate-900">
+      <body className="min-h-full flex flex-col selection:bg-cyan-500 selection:text-slate-900" suppressHydrationWarning>
         {children}
       </body>
     </html>
