@@ -78,7 +78,7 @@ function findField(keywords) {
     const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
     const labelText = getAssociatedLabelText(el).toLowerCase();
     
-    for (const keyword = keywords) {
+    for (const keyword of keywords) {
       if (
         id.includes(keyword) || 
         name.includes(keyword) || 
