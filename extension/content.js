@@ -93,172 +93,123 @@ function getAssociatedLabelText(element) {
   return "";
 }
 
-// Find input, select, or textarea by keywords in its attributes or label text
-function findField(keywords) {
-  // Select all possible input fields, including modern types like date/number/email/tel
+// Scan page for fillable fields and assign a unique tracking ID
+let fieldCounter = 0;
+function scanPageFields() {
   const elements = document.querySelectorAll(
-    'input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="tel"], input:not([type]), select, textarea, [role="textbox"]'
+    'input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="tel"], input[type="radio"], input:not([type]), select, textarea, [role="textbox"], [role="radio"]'
   );
   
-  for (const el of elements) {
-    const id = (el.id || "").toLowerCase();
-    const name = (el.name || "").toLowerCase();
-    const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
-    const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
-    const labelText = getAssociatedLabelText(el).toLowerCase();
-    
-    for (const keyword of keywords) {
-      if (
-        id.includes(keyword) || 
-        name.includes(keyword) || 
-        placeholder.includes(keyword) ||
-        ariaLabel.includes(keyword) ||
-        labelText.includes(keyword)
-      ) {
-        console.log(`Matched keyword "${keyword}" to element:`, el, `Label found: "${labelText}"`);
-        return el;
-      }
+  const scanned = [];
+  elements.forEach((el) => {
+    // Assign unique field ID if not present
+    let id = el.getAttribute("data-asha-field-id");
+    if (!id) {
+      id = `asha-field-${fieldCounter++}`;
+      el.setAttribute("data-asha-field-id", id);
     }
-  }
-  return null;
+    
+    const labelText = getAssociatedLabelText(el);
+    const placeholder = el.getAttribute("placeholder") || "";
+    const nameAttr = el.getAttribute("name") || "";
+    const typeAttr = el.getAttribute("type") || (el.getAttribute("role") === "radio" ? "radio" : el.tagName.toLowerCase());
+    const ariaLabel = el.getAttribute("aria-label") || "";
+
+    scanned.push({
+      asha_id: id,
+      id: el.id || "",
+      name: nameAttr,
+      type: typeAttr,
+      placeholder: placeholder,
+      aria_label: ariaLabel,
+      label_text: labelText
+    });
+  });
+  
+  console.log("ASHA Copilot scanned fields:", scanned);
+  return scanned;
 }
 
 // Listen for messages from popup.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log("ASHA Copilot content script received message:", request);
   
-  if (request.action === "autofill" && request.profile) {
-    const profile = request.profile;
-
-    // Define search keyword lists for each data field
-    const matchRules = [
-      {
-        field: "name",
-        keywords: ["name", "full_name", "fullname", "first_name", "beneficiary", "worker", "user"],
-        value: profile.name
-      },
-      {
-        field: "dob",
-        keywords: ["dob", "birth", "birthdate", "date_of_birth", "birth_date", "date"],
-        value: profile.dob
-      },
-      {
-        field: "aadhaar",
-        keywords: ["aadhaar", "aadhar", "uid", "unique", "national_id", "identity", "card_number", "id_number"],
-        value: profile.aadhaar
-      },
-      {
-        field: "address",
-        keywords: ["address", "addr", "residence", "village", "city", "location", "full_address"],
-        value: profile.address
-      }
-    ];
-
+  if (request.action === "scanFields") {
+    const fields = scanPageFields();
+    sendResponse({ success: true, fields: fields });
+  } else if (request.action === "fillFields" && request.mappings && request.profile) {
+    const { mappings, profile } = request;
     let filledCount = 0;
-
-    // Process general text inputs & selects
-    matchRules.forEach(rule => {
-      const fieldEl = findField(rule.keywords);
-      if (fieldEl) {
-        console.log(`Filling field [${rule.field}] with value: ${rule.value}`);
-        
-        // Focus to trigger SPA activation state
-        fieldEl.focus();
-        
-        if (fieldEl.tagName === "SELECT") {
-          const normVal = rule.value.toUpperCase();
-          for (let i = 0; i < fieldEl.options.length; i++) {
-            const optVal = fieldEl.options[i].value.toUpperCase();
-            const optText = fieldEl.options[i].text.toUpperCase();
-            if (optVal.includes(normVal) || normVal.includes(optVal) || optText.includes(normVal) || normVal.includes(optText)) {
-              fieldEl.selectedIndex = i;
-              break;
-            }
-          }
-        } else if (fieldEl.tagName === "INPUT" && fieldEl.type === "date") {
-          fieldEl.value = formatToISODate(rule.value);
-        } else {
-          fieldEl.value = rule.value;
-        }
-
-        // Trigger change & input events so frameworks like React/Angular/Wiz track input changes
-        fieldEl.dispatchEvent(new Event("input", { bubbles: true }));
-        fieldEl.dispatchEvent(new Event("change", { bubbles: true }));
-        
-        // Blur to complete the focus-fill-blur cycle
-        fieldEl.blur();
-        
-        // Visual feedback animation
-        fieldEl.classList.add("autofill-highlight-pulse");
-        setTimeout(() => {
-          fieldEl.classList.remove("autofill-highlight-pulse");
-        }, 2000);
-
-        filledCount++;
-      } else {
-        console.warn(`Could not find field matching rule [${rule.field}] with keywords:`, rule.keywords);
-      }
-    });
-
-    // Special handling for Gender field (which could be radio buttons or select dropdown)
-    const genderField = findField(["gender", "sex", "gender_type"]);
-    if (genderField && genderField.tagName === "SELECT") {
-      console.log("Filling Gender via SELECT dropdown");
-      genderField.focus();
-      const normVal = profile.gender.toUpperCase();
-      for (let i = 0; i < genderField.options.length; i++) {
-        const optVal = genderField.options[i].value.toUpperCase();
-        const optText = genderField.options[i].text.toUpperCase();
-        if (optVal.includes(normVal) || normVal.includes(optVal) || optText.includes(normVal) || normVal.includes(optText)) {
-          genderField.selectedIndex = i;
-          genderField.dispatchEvent(new Event("change", { bubbles: true }));
-          genderField.dispatchEvent(new Event("input", { bubbles: true }));
-          genderField.blur();
-          
-          genderField.classList.add("autofill-highlight-pulse");
-          setTimeout(() => {
-            genderField.classList.remove("autofill-highlight-pulse");
-          }, 2000);
-          filledCount++;
-          break;
-        }
-      }
-    } else {
-      // Look for radio buttons matching gender text values (native or custom elements)
-      console.log("Looking for Gender via radio buttons");
-      const radios = document.querySelectorAll('input[type="radio"], [role="radio"]');
-      const normVal = profile.gender.toUpperCase();
-      let genderFilled = false;
+    
+    mappings.forEach(map => {
+      if (!map.mapped_field || map.confidence < 0.4) return;
       
-      radios.forEach(radio => {
-        const val = (radio.value || radio.getAttribute("value") || radio.getAttribute("data-value") || "").toUpperCase();
-        const labelText = (radio.getAttribute("aria-label") || getAssociatedLabelText(radio) || "").toUpperCase();
+      const el = document.querySelector(`[data-asha-field-id="${map.asha_id}"]`);
+      if (!el) return;
+      
+      const value = profile[map.mapped_field];
+      if (!value) return;
+      
+      console.log(`Filling field mapped to [${map.mapped_field}] with value: ${value}`);
+      
+      // Perform element-specific fill
+      el.focus();
+      
+      const type = (el.getAttribute("type") || el.getAttribute("role") || el.tagName).toLowerCase();
+      
+      if (type === "radio" || el.type === "radio") {
+        // Handle radio button selection
+        const val = (el.value || el.getAttribute("value") || el.getAttribute("data-value") || "").toUpperCase();
+        const labelText = (el.getAttribute("aria-label") || getAssociatedLabelText(el) || "").toUpperCase();
+        const normVal = value.toUpperCase();
         
         if (val.includes(normVal) || normVal.includes(val) || labelText.includes(normVal)) {
-          console.log("Matching gender radio option found:", radio, `Value: ${val}, Label: ${labelText}`);
-          if (radio.tagName === "INPUT") {
-            radio.checked = true;
-            radio.dispatchEvent(new Event("change", { bubbles: true }));
-            radio.dispatchEvent(new Event("input", { bubbles: true }));
+          if (el.tagName === "INPUT") {
+            el.checked = true;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("input", { bubbles: true }));
           } else {
-            // Click custom div elements directly (like Google Forms' role="radio" container)
-            radio.click();
+            el.click();
           }
-
-          // Visual feedback animation
-          radio.classList.add("autofill-highlight-pulse");
-          setTimeout(() => {
-            radio.classList.remove("autofill-highlight-pulse");
-          }, 2000);
-
-          if (!genderFilled) {
+          filledCount++;
+        }
+      } else if (el.tagName === "SELECT") {
+        // Handle select element
+        const normVal = value.toUpperCase();
+        for (let i = 0; i < el.options.length; i++) {
+          const optVal = el.options[i].value.toUpperCase();
+          const optText = el.options[i].text.toUpperCase();
+          if (optVal.includes(normVal) || normVal.includes(optVal) || optText.includes(normVal) || normVal.includes(optText)) {
+            el.selectedIndex = i;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("input", { bubbles: true }));
             filledCount++;
-            genderFilled = true;
+            break;
           }
         }
-      });
-    }
-
+      } else if (el.type === "date" || type === "date") {
+        // Handle date input (format to ISO YYYY-MM-DD)
+        el.value = formatToISODate(value);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        filledCount++;
+      } else {
+        // Handle general text inputs/textareas
+        el.value = value;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        filledCount++;
+      }
+      
+      el.blur();
+      
+      // Flash highlight animation
+      el.classList.add("autofill-highlight-pulse");
+      setTimeout(() => {
+        el.classList.remove("autofill-highlight-pulse");
+      }, 2000);
+    });
+    
     console.log(`Autofill completed. Filled ${filledCount} fields.`);
     sendResponse({ success: true, count: filledCount });
   }

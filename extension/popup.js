@@ -40,36 +40,104 @@ document.addEventListener("DOMContentLoaded", async () => {
   btnFill.addEventListener("click", () => {
     if (!activeProfile) return;
 
+    // Transition button to loading status
+    const originalText = btnFill.innerHTML;
+    btnFill.innerHTML = "🌀 Scan Form Fields...";
+    btnFill.disabled = true;
+
     // Query active tab and send fill message
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs.length === 0) return;
+      if (tabs.length === 0) {
+        resetButton(originalText);
+        return;
+      }
       
       const activeTab = tabs[0];
-      chrome.tabs.sendMessage(activeTab.id, {
-        action: "autofill",
-        profile: activeProfile
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("Autofill communication error:", chrome.runtime.lastError);
-          const originalText = btnFill.innerHTML;
-          btnFill.innerHTML = "⚠️ Please Refresh the Webpage!";
-          btnFill.style.background = "#F59E0B";
-          setTimeout(() => {
-            btnFill.innerHTML = originalText;
-            btnFill.style.background = "";
-          }, 3000);
+
+      // Step 1: Scan fields on the webpage via content script
+      chrome.tabs.sendMessage(activeTab.id, { action: "scanFields" }, async (scanResponse) => {
+        if (chrome.runtime.lastError || !scanResponse || !scanResponse.fields) {
+          console.error("Autofill scan error:", chrome.runtime.lastError);
+          showErrorButton("⚠️ Please Refresh Webpage!");
           return;
         }
 
-        // Feedback success visual on button
-        const originalText = btnFill.innerHTML;
-        btnFill.innerHTML = "✅ Form Filled Successfully!";
-        btnFill.style.background = "#10B981";
-        setTimeout(() => {
-          btnFill.innerHTML = originalText;
-          btnFill.style.background = "";
-        }, 1500);
+        const scannedFields = scanResponse.fields;
+        if (scannedFields.length === 0) {
+          showErrorButton("⚠️ No Form Fields Detected!");
+          return;
+        }
+
+        btnFill.innerHTML = "🧠 AI Mapping Fields...";
+
+        try {
+          // Step 2: Request AI Mapping from Backend FastAPI Server
+          const mapResponse = await fetch("http://127.0.0.1:8000/api/map-fields", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ fields: scannedFields })
+          });
+
+          if (!mapResponse.ok) {
+            throw new Error("AI Mapping service failed");
+          }
+
+          const result = await mapResponse.json();
+          const mappings = result.mappings;
+
+          // Attach asha_id from scannedFields matching index structure
+          const enrichedMappings = mappings.map((m, idx) => ({
+            ...m,
+            asha_id: scannedFields[idx].asha_id
+          }));
+
+          btnFill.innerHTML = "⚡ Auto-filling Form...";
+
+          // Step 3: Populate values using content script
+          chrome.tabs.sendMessage(activeTab.id, {
+            action: "fillFields",
+            mappings: enrichedMappings,
+            profile: activeProfile
+          }, (fillResponse) => {
+            if (chrome.runtime.lastError || !fillResponse) {
+              console.error("Autofill execution error:", chrome.runtime.lastError);
+              showErrorButton("⚠️ Fill Execution Failed!");
+              return;
+            }
+
+            // Step 4: Show Success Confirmation
+            btnFill.innerHTML = `✅ Filled ${fillResponse.count} Fields!`;
+            btnFill.style.background = "#10B981";
+            btnFill.disabled = false;
+            
+            setTimeout(() => {
+              btnFill.innerHTML = originalText;
+              btnFill.style.background = "";
+            }, 3000);
+          });
+
+        } catch (err) {
+          console.error("AI Mapping execution failure:", err);
+          showErrorButton("⚠️ AI Mapping Error!");
+        }
       });
     });
   });
+
+  function resetButton(text) {
+    btnFill.innerHTML = text;
+    btnFill.disabled = false;
+  }
+
+  function showErrorButton(msg) {
+    btnFill.innerHTML = msg;
+    btnFill.style.background = "#EF4444";
+    btnFill.disabled = false;
+    setTimeout(() => {
+      btnFill.innerHTML = "⚡ Autofill Form";
+      btnFill.style.background = "";
+    }, 3000);
+  }
 });
