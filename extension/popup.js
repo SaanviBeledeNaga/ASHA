@@ -49,6 +49,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         action: "autofill",
         profile: activeProfile
       }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Autofill communication error:", chrome.runtime.lastError);
+          const originalText = btnFill.innerHTML;
+          btnFill.innerHTML = "⚠️ Please Refresh the Webpage!";
+          btnFill.style.background = "#F59E0B";
+          setTimeout(() => {
+            btnFill.innerHTML = originalText;
+            btnFill.style.background = "";
+          }, 3000);
+          return;
+        }
+
         // Feedback success visual on button
         const originalText = btnFill.innerHTML;
         btnFill.innerHTML = "✅ Form Filled Successfully!";
