@@ -56,50 +56,107 @@ function formatToISODate(dateStr) {
   return dateStr;
 }
 
-// Helper function to get text inside matching labels, checking ARIA and container tags for Google Forms compatibility
+/**
+ * Finds the Google Forms question title for an element by walking up the DOM
+ * looking for the question container and extracting the heading/title text.
+ * Google Forms nests elements deeply, so we need to traverse far up.
+ */
+function findGoogleFormsQuestionTitle(element) {
+  let parent = element.parentElement;
+
+  // Traverse up to 15 ancestors to find the question container
+  for (let i = 0; i < 15 && parent; i++) {
+    // Google Forms question title selectors (multiple classes for compatibility)
+    const titleEl = parent.querySelector(
+      '.M7eMe, ' +                                                  // Current Google Forms question title class
+      '[role="heading"], ' +                                        // Accessible heading role
+      '.freebirdFormviewerComponentsQuestionBaseTitle, ' +          // Older/classic Google Forms title
+      '.freebirdFormviewerViewItemsItemItemTitle, ' +               // Another legacy title class
+      '.Qr7Oae'                                                    // Another Google Forms question header
+    );
+
+    if (titleEl) {
+      const text = titleEl.innerText.trim();
+      // Make sure we got a real title, not a generic "Your answer" placeholder
+      if (text && text.length < 200 && text.toLowerCase() !== "your answer") {
+        return text;
+      }
+    }
+    parent = parent.parentElement;
+  }
+  return null;
+}
+
+/**
+ * Helper function to get text inside matching labels.
+ * Checks ARIA, standard labels, and Google Forms-specific title containers.
+ */
 function getAssociatedLabelText(element) {
   // 1. Check standard <label> elements
   if (element.id) {
     const label = document.querySelector(`label[for="${element.id}"]`);
-    if (label) return label.innerText;
+    if (label) {
+      const labelText = label.innerText.trim();
+      if (labelText && labelText.toLowerCase() !== "your answer") return labelText;
+    }
   }
   const parentLabel = element.closest("label");
-  if (parentLabel) return parentLabel.innerText;
+  if (parentLabel) {
+    const labelText = parentLabel.innerText.trim();
+    if (labelText && labelText.toLowerCase() !== "your answer") return labelText;
+  }
   
-  // 2. Check aria-label directly on input
-  const ariaLabel = element.getAttribute("aria-label");
-  if (ariaLabel) return ariaLabel;
-
-  // Check aria-labelledby: can contain multiple space-separated IDs (common in Google Forms)
+  // 2. Check aria-labelledby (highly specific visible text references)
   const ariaLabelledBy = element.getAttribute("aria-labelledby");
   if (ariaLabelledBy) {
     const ids = ariaLabelledBy.trim().split(/\s+/);
     const labelTexts = ids.map(id => {
       const el = document.getElementById(id);
       return el ? el.innerText.trim() : "";
-    }).filter(t => t);
+    }).filter(t => t && t.toLowerCase() !== "your answer");
     if (labelTexts.length > 0) {
       return labelTexts.join(" ");
     }
   }
+  
+  // 3. Check aria-label directly on input (skip generic "your answer" placeholders)
+  const ariaLabel = element.getAttribute("aria-label");
+  if (ariaLabel && ariaLabel.toLowerCase() !== "your answer") return ariaLabel;
 
-  // 3. Custom forms/Google Forms traversal: look at ancestor titles
-  let parent = element.parentElement;
-  for (let i = 0; i < 5 && parent; i++) {
-    // Check specific question title classes/roles used in Google Forms or standard frameworks
-    const titleEl = parent.querySelector('.M7eMe, [role="heading"], .freebirdFormviewerComponentsQuestionBaseTitle');
-    if (titleEl && titleEl.innerText && titleEl.innerText.trim().length < 150) {
-      return titleEl.innerText.trim();
-    }
-    parent = parent.parentElement;
-  }
+  // 4. Google Forms-specific deep traversal (up to 15 levels up)
+  const gfTitle = findGoogleFormsQuestionTitle(element);
+  if (gfTitle) return gfTitle;
 
-  // 4. Sibling traversal fallback
+  // 5. Sibling traversal fallback
   let prev = element.previousElementSibling;
   while (prev) {
-    if (prev.tagName === "LABEL" || prev.innerText) return prev.innerText;
+    const text = (prev.innerText || "").trim();
+    if ((prev.tagName === "LABEL" || text) && text.toLowerCase() !== "your answer") {
+      return text;
+    }
     prev = prev.previousElementSibling;
   }
+  return "";
+}
+
+/**
+ * For radio buttons in Google Forms, we need the OPTION label (e.g., "Male")
+ * separately from the QUESTION title (e.g., "Gender").
+ * This function returns the radio option's own visible label text.
+ */
+function getRadioOptionLabel(element) {
+  // For role="radio" divs in Google Forms, aria-label contains the option text
+  const ariaLabel = element.getAttribute("aria-label");
+  if (ariaLabel) return ariaLabel.trim();
+  
+  // For native radio inputs, check the parent label or adjacent text
+  const parentLabel = element.closest("label");
+  if (parentLabel) return parentLabel.innerText.trim();
+  
+  // Check value attribute
+  const val = element.value || element.getAttribute("data-value") || "";
+  if (val) return val.trim();
+  
   return "";
 }
 
@@ -107,7 +164,7 @@ function getAssociatedLabelText(element) {
 let fieldCounter = 0;
 function scanPageFields() {
   const elements = document.querySelectorAll(
-    'input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="tel"], input[type="radio"], input:not([type]), select, textarea, [role="textbox"], [role="radio"]'
+    'input[type="text"], input[type="date"], input[type="number"], input[type="email"], input[type="tel"], input[type="radio"], input:not([type]), select, textarea, [role="textbox"], [role="radio"], [role="listbox"]'
   );
   
   const scanned = [];
@@ -131,11 +188,28 @@ function scanPageFields() {
       id = `asha-field-${fieldCounter++}`;
       el.setAttribute("data-asha-field-id", id);
     }
+
+    const isRadio = el.type === "radio" || el.getAttribute("role") === "radio";
+    const typeAttr = el.getAttribute("type") || (el.getAttribute("role") === "radio" ? "radio" : el.tagName.toLowerCase());
+
+    let labelText;
+    let radioOptionText = "";
     
-    const labelText = getAssociatedLabelText(el);
+    if (isRadio) {
+      // For radios: get the question title AND the option label separately
+      radioOptionText = getRadioOptionLabel(el);
+      // The question title comes from the parent question container
+      labelText = findGoogleFormsQuestionTitle(el) || getAssociatedLabelText(el);
+      // If we still only got the option label as the "question", try harder
+      if (!labelText || labelText === radioOptionText) {
+        labelText = ""; // will be resolved by AI mapper
+      }
+    } else {
+      labelText = getAssociatedLabelText(el);
+    }
+
     const placeholder = el.getAttribute("placeholder") || "";
     const nameAttr = el.getAttribute("name") || "";
-    const typeAttr = el.getAttribute("type") || (el.getAttribute("role") === "radio" ? "radio" : el.tagName.toLowerCase());
     const ariaLabel = el.getAttribute("aria-label") || "";
 
     scanned.push({
@@ -145,7 +219,8 @@ function scanPageFields() {
       type: typeAttr,
       placeholder: placeholder,
       aria_label: ariaLabel,
-      label_text: labelText
+      label_text: labelText,
+      radio_option: radioOptionText  // e.g., "Male", "Female", "Other"
     });
   });
   
@@ -195,34 +270,67 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       // Perform element-specific fill
       try {
-        el.focus();
-        
         const type = (el.getAttribute("type") || el.getAttribute("role") || el.tagName).toLowerCase();
         
         if (type === "radio" || el.type === "radio") {
-          // Handle radio button selection
-          const val = el.value || el.getAttribute("value") || el.getAttribute("data-value") || "";
-          const labelText = el.getAttribute("aria-label") || getAssociatedLabelText(el) || "";
-          const normVal = value.trim();
+          // ---- RADIO BUTTON HANDLING ----
+          // Get the visible label of this specific radio option
+          const optionLabel = getRadioOptionLabel(el).toLowerCase().trim();
+          const targetValue = value.toLowerCase().trim();
           
-          // Exact word boundary matching to prevent "MALE" matching "FEMALE"
-          const regex = new RegExp(`\\b${normVal}\\b`, 'i');
+          logDebug(`Radio check: option="${optionLabel}" vs target="${targetValue}"`);
           
-          if (regex.test(val) || regex.test(labelText)) {
-            logDebug(`Matching radio option found. Clicking radio element.`);
+          // Strict matching: option label must exactly equal the target value
+          // OR the target value must be contained as a standalone word
+          let isMatch = false;
+          
+          if (optionLabel === targetValue) {
+            // Exact match: "male" === "male"
+            isMatch = true;
+          } else if (optionLabel.length > 0 && targetValue.length > 0) {
+            // Word-boundary match, but ONLY if the option is shorter/equal to the target
+            // This prevents "male" from matching "female"
+            // We check: does the option label START with the target, or is it exactly a word in the target?
+            const optionWords = optionLabel.split(/\s+/);
+            const targetWords = targetValue.split(/\s+/);
+            
+            // Check if any target word exactly matches any option word
+            isMatch = optionWords.some(ow => targetWords.some(tw => tw === ow));
+            
+            // Safety: explicitly exclude partial substring matches like "male" in "female"
+            if (isMatch) {
+              // Double-check: "female" should not match "male"
+              if (optionLabel.includes(targetValue) && optionLabel !== targetValue) {
+                // e.g., optionLabel="female" includes targetValue="male" but they're not equal
+                isMatch = false;
+                logDebug(`Rejected false positive: "${optionLabel}" contains "${targetValue}" but is not exact match`);
+              }
+              if (targetValue.includes(optionLabel) && optionLabel !== targetValue) {
+                // e.g., targetValue="female" includes optionLabel="male" but they're not equal
+                isMatch = false;
+                logDebug(`Rejected false positive: "${targetValue}" contains "${optionLabel}" but is not exact match`);
+              }
+            }
+          }
+          
+          if (isMatch) {
+            logDebug(`✅ Matching radio option found: "${optionLabel}". Clicking.`);
+            el.focus();
             if (el.tagName === "INPUT") {
               el.checked = true;
               el.dispatchEvent(new Event("change", { bubbles: true }));
               el.dispatchEvent(new Event("input", { bubbles: true }));
             } else {
+              // Google Forms role="radio" div — just click it
               el.click();
             }
             filledCount++;
           } else {
-            logDebug(`Radio option "${val}" / "${labelText}" did not match target "${normVal}"`);
+            logDebug(`❌ Radio option "${optionLabel}" did not match target "${targetValue}"`);
           }
         } else if (el.tagName === "SELECT") {
-          // Handle select element
+          // ---- SELECT DROPDOWN HANDLING ----
+          el.focus();
           const normVal = value.toUpperCase();
           let matched = false;
           for (let i = 0; i < el.options.length; i++) {
@@ -241,35 +349,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (!matched) {
             logDebug(`No matching SELECT option found for: ${normVal}`);
           }
+          el.blur();
         } else if (el.type === "date" || type === "date") {
-          // Handle date input (format to ISO YYYY-MM-DD)
+          // ---- DATE INPUT HANDLING ----
+          el.focus();
           const isoDate = formatToISODate(value);
-          el.value = isoDate;
+          
+          // Use the native input setter to ensure frameworks detect the change
+          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+          nativeInputValueSetter.call(el, isoDate);
+          
           el.dispatchEvent(new Event("input", { bubbles: true }));
           el.dispatchEvent(new Event("change", { bubbles: true }));
           filledCount++;
           logDebug(`Set date input to: ${isoDate}`);
+          el.blur();
         } else {
-          // Handle general text inputs, textareas, and contenteditable elements
+          // ---- GENERAL TEXT / TEXTAREA / CONTENTEDITABLE HANDLING ----
+          el.focus();
           if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-            el.value = value;
-            logDebug(`Set standard input/textarea value to: ${value}`);
+            // Use native setter to bypass React/Angular/Vue value trapping
+            const proto = el.tagName === "TEXTAREA"
+              ? window.HTMLTextAreaElement.prototype
+              : window.HTMLInputElement.prototype;
+            const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+            nativeSetter.call(el, value);
+            logDebug(`Set ${el.tagName.toLowerCase()} value to: ${value}`);
           } else if (el.isContentEditable || el.getAttribute("contenteditable") === "true") {
             el.innerText = value;
-            el.innerHTML = value;
             logDebug(`Set contenteditable innerText to: ${value}`);
           } else {
             // Fallback for divs with role="textbox"
-            el.value = value;
             el.innerText = value;
-            logDebug(`Set fallback element value/innerText to: ${value}`);
+            logDebug(`Set fallback element innerText to: ${value}`);
           }
           el.dispatchEvent(new Event("input", { bubbles: true }));
           el.dispatchEvent(new Event("change", { bubbles: true }));
+          el.dispatchEvent(new Event("blur", { bubbles: true }));
           filledCount++;
+          el.blur();
         }
-        
-        el.blur();
         
         // Flash highlight animation
         el.classList.add("autofill-highlight-pulse");

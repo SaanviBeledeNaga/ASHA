@@ -261,6 +261,7 @@ class PageFieldSchema(BaseModel):
     placeholder: Optional[str] = None
     aria_label: Optional[str] = None
     label_text: Optional[str] = None
+    radio_option: Optional[str] = None
 
 class MapFieldsRequestSchema(BaseModel):
     fields: List[PageFieldSchema]
@@ -282,9 +283,12 @@ def ai_map_fields(fields_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     You are an AI specialized in web form mapping. Your task is to analyze a list of web form fields and map them to the corresponding beneficiary profile attributes:
     - 'name': Full name of the applicant, beneficiary, candidate, or worker.
     - 'dob': Date of birth, birthdate, age, or DOB.
-    - 'gender': Gender, sex, or gender type.
+    - 'gender': Gender, sex, or gender type. Radio button options like Male/Female/Other should ALL be mapped to 'gender'.
     - 'aadhaar': Aadhaar card number, UID, unique ID, identity card, or national ID.
-    - 'address': Address, residence, home address, village, or location.
+    - 'address': Address, residence, home address, village, registered address, or location. Textareas in a form are frequently used for address fields.
+
+    IMPORTANT: For radio buttons, each option (e.g., Male, Female, Other) should be mapped to 'gender'. The 'radio_option' field tells you what the option text is.
+    IMPORTANT: If a textarea has a generic label like "Your answer" but appears after gender/aadhaar fields, it is likely an address field.
 
     You must output a valid JSON array of objects, where each object corresponds to a field in the input list.
     Each object must have the following fields:
@@ -341,13 +345,31 @@ def ai_map_fields(fields_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         "name": ["name", "full_name", "fullname", "first_name", "beneficiary", "worker", "user", "applicant", "candidate"],
         "dob": ["dob", "birth", "birthdate", "date_of_birth", "birth_date", "date", "age"],
         "aadhaar": ["aadhaar", "aadhar", "uid", "unique", "national_id", "identity", "card_number", "id_number"],
-        "address": ["address", "addr", "residence", "village", "city", "location", "full_address"],
+        "address": ["address", "addr", "residence", "village", "city", "location", "full_address", "registered"],
         "gender": ["gender", "sex", "gender_type"]
     }
+    
+    # Track what fields have been assigned to detect remaining unassigned textareas
+    assigned_fields = set()
     
     for f in fields_list:
         matched_field = None
         highest_score = 0.0
+        
+        field_type = (f.get("type") or "").lower()
+        radio_option = (f.get("radio_option") or "").lower()
+        
+        # Special handling for radio buttons: always map to gender
+        if field_type == "radio" or radio_option:
+            matched_field = "gender"
+            highest_score = 0.90
+            mappings.append({
+                "asha_id": f.get("asha_id"),
+                "mapped_field": matched_field,
+                "confidence": highest_score
+            })
+            assigned_fields.add("gender")
+            continue
         
         # Check text fields
         id_str = (f.get("id") or "").lower()
@@ -374,6 +396,18 @@ def ai_map_fields(fields_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     if score > highest_score:
                         highest_score = score
                         matched_field = field
+        
+        # Heuristic: if this is a textarea with a generic/empty label and address hasn't been assigned yet,
+        # it's very likely the address field (common in Google Forms)
+        if not matched_field and field_type == "textarea" and "address" not in assigned_fields:
+            generic_labels = ["", "your answer", "type your answer"]
+            if label_text_str.strip() in generic_labels:
+                matched_field = "address"
+                highest_score = 0.70
+                print(f"[Fallback] Textarea with generic label assigned to 'address': {f.get('asha_id')}")
+        
+        if matched_field:
+            assigned_fields.add(matched_field)
                         
         mappings.append({
             "asha_id": f.get("asha_id"),
