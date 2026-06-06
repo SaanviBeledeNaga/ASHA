@@ -55,6 +55,22 @@ class BeneficiaryCreateSchema(BaseModel):
     pregnancy_status: bool
     pregnancy_month: Optional[int] = None
 
+class AutofillProfileSchema(BaseModel):
+    name: str
+    dob: str
+    gender: str
+    aadhaar: str
+    address: str
+
+# Global state to store the active beneficiary profile for form autofilling
+active_autofill_profile = {
+    "name": "SUSHMA DEVI",
+    "dob": "12/04/1998",
+    "gender": "FEMALE",
+    "aadhaar": "XXXX-XXXX-8921",
+    "address": "GOPALAPURAM VILLAGE, WARD 3, ANDHRA PRADESH"
+}
+
 @app.post("/api/beneficiaries")
 def create_beneficiary(data: BeneficiaryCreateSchema):
     try:
@@ -217,6 +233,23 @@ async def perform_ocr(file: UploadFile = File(...)):
         return extracted_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# 5b-i. Active Autofill Profile Retrieval & Management Endpoints
+@app.get("/api/autofill-profile")
+def get_autofill_profile():
+    return active_autofill_profile
+
+@app.post("/api/autofill-profile")
+def update_autofill_profile(profile: AutofillProfileSchema):
+    global active_autofill_profile
+    active_autofill_profile = {
+        "name": profile.name,
+        "dob": profile.dob,
+        "gender": profile.gender,
+        "aadhaar": profile.aadhaar,
+        "address": profile.address
+    }
+    return {"status": "success", "profile": active_autofill_profile}
 
 # 5c. Register Digitization OCR Endpoint
 @app.post("/api/ocr-register")

@@ -1966,8 +1966,28 @@ export default function Home() {
                         🛡️ {t.encrypted}
                       </span>
                       <button 
-                        onClick={() => {
-                          alert("Data saved securely to national health repository!");
+                        onClick={async () => {
+                          try {
+                            const response = await fetch("http://127.0.0.1:8000/api/autofill-profile", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                name: ocrData.name,
+                                dob: ocrData.dob,
+                                gender: ocrData.gender,
+                                aadhaar: ocrData.aadhaar,
+                                address: ocrData.address
+                              })
+                            });
+                            if (response.ok) {
+                              alert("Data saved securely and activated for browser form autofilling!");
+                            } else {
+                              alert("Data saved securely to national health repository!");
+                            }
+                          } catch (err) {
+                            console.warn("Autofill profile activation failed:", err);
+                            alert("Data saved securely to national health repository!");
+                          }
                           setCurrentView("chat");
                         }}
                         disabled={!ocrData.name}

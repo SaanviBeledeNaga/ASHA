@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "ASHA Copilot Autofill Helper",
+  "version": "1.0.0",
+  "description": "Autofills government portal forms securely using data scanned in ASHA Copilot.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ASHA Copilot Autofill"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

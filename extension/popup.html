@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 320px;
+      background-color: #0F172A;
+      color: #F8FAFC;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 16px;
+      box-sizing: border-box;
+      border: 1px solid #334155;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #1E293B;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+    }
+
+    .title-area {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .title {
+      font-size: 1rem;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #06B6D4, #7C3AED);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.65rem;
+      color: #64748B;
+      text-transform: uppercase;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    .profile-card {
+      background-color: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .profile-title {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: #06B6D4;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10B981;
+      border-radius: 50px;
+      display: inline-block;
+      margin-left: 5px;
+      box-shadow: 0 0 8px #10B981;
+    }
+
+    .data-row {
+      margin-bottom: 8px;
+    }
+
+    .data-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .data-label {
+      font-size: 0.6rem;
+      color: #64748B;
+      text-transform: uppercase;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .data-value {
+      font-size: 0.75rem;
+      color: #F1F5F9;
+      word-break: break-all;
+    }
+
+    .btn-action {
+      width: 100%;
+      background: linear-gradient(90deg, #06B6D4, #7C3AED);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(6, 182, 212, 0.25);
+    }
+
+    .btn-action:hover {
+      opacity: 0.95;
+      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-action:active {
+      transform: translateY(0);
+    }
+
+    .error-msg {
+      color: #F87171;
+      font-size: 0.75rem;
+      text-align: center;
+      padding: 10px;
+      background-color: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 6px;
+    }
+
+    .loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px 0;
+    }
+
+    .spinner {
+      border: 3px solid #334155;
+      border-top: 3px solid #06B6D4;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="logo">⚡</span>
+    <div class="title-area">
+      <h2 class="title">ASHA Copilot</h2>
+      <span class="subtitle">Autofill Helper</span>
+    </div>
+  </div>
+
+  <div id="loader-view" class="loader">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="error-view" style="display: none; margin-bottom: 16px;">
+    <div class="error-msg">
+      ⚠️ Failed to fetch profile from local desktop app. Ensure the ASHA Copilot server is running.
+    </div>
+  </div>
+
+  <div id="profile-view" style="display: none;">
+    <div class="profile-card">
+      <div class="profile-title">
+        Active Profile
+        <span class="status-dot"></span>
+      </div>
+      
+      <div class="data-row">
+        <span class="data-label">Full Name</span>
+        <span id="field-name" class="data-value">-</span>
+      </div>
+      
+      <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div class="data-row">
+          <span class="data-label">DOB</span>
+          <span id="field-dob" class="data-value">-</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Gender</span>
+          <span id="field-gender" class="data-value">-</span>
+        </div>
+      </div>
+      
+      <div class="data-row">
+        <span class="data-label">Aadhaar UID</span>
+        <span id="field-aadhaar" class="data-value">-</span>
+      </div>
+      
+      <div class="data-row">
+        <span class="data-label">Address</span>
+        <span id="field-address" class="data-value">-</span>
+      </div>
+    </div>
+
+    <button id="btn-fill" class="btn-action">
+      🚀 Autofill Form
+    </button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
